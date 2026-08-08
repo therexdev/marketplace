@@ -1,0 +1,3358 @@
+{
+  "auditedAt": "2026-08-08T23:22:59.957Z",
+  "rpc": "https://api.koinos.io",
+  "candidates": 424,
+  "collections": 44,
+  "rows": [
+    {
+      "address": "1DDrWPzWZF92sxvX2FuXyKdy4XHXMFaqht",
+      "trades": 9313,
+      "name": "Real World Assets",
+      "symbol": "RWA",
+      "description": null,
+      "uri": "https://bafybeigetxw5yx7w5ct7vh3dlujoujtuyybwddkw7ky6hnt3k3x7htns3y.ipfs.nftstorage.link/",
+      "supply": 3000,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 1,
+      "imgLive": 1,
+      "images": [
+        {
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg",
+          "ok": true,
+          "url": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Real World Assets #1",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Real World Assets #2",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Real World Assets #3",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Real World Assets #4",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Real World Assets #5",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Real World Assets #6",
+          "image": "https://bafybeicxpw3chjktjqxicg5i3a7tcdf2odmdihdcptrznuzhsvistaqiu4.ipfs.nftstorage.link/rwa.jpg"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "17H1HS7SHR76JpqhpkRVgfEQHanq9vh8rF",
+      "trades": 966,
+      "name": "Bitkoin NFT",
+      "symbol": "BTK",
+      "description": null,
+      "uri": "https://bafybeielx6riyeotunzir6himipmt4vxafko3vjk5oa6swxfpgqdwzt4bu.ipfs.nftstorage.link/",
+      "supply": 220,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/1.jpg",
+          "ok": true,
+          "url": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/1.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/2.jpg",
+          "ok": true,
+          "url": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/2.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/3.jpg",
+          "ok": true,
+          "url": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/3.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/4.jpg",
+          "ok": true,
+          "url": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/4.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Bitkoin #001",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/1.jpg"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Bitkoin #002",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/2.jpg"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Bitkoin #003",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/3.jpg"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Bitkoin #004",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/4.jpg"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Bitkoin #005",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/5.jpg"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Bitkoin #006",
+          "image": "https://bafybeigvljttl4a4vv4dj4pjdjuk75cn4ga37yfkxvtaictk7tcldlvj6y.ipfs.nftstorage.link/6.jpg"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1BiETH1WgXZTGW9yT72NWqEv2dgTKtpjBg",
+      "trades": 946,
+      "name": "Koinos Garden",
+      "symbol": "KG",
+      "description": null,
+      "uri": "ipfs://bafybeiebwiddhpk3km3gjkau6qiklnhsv2ccuh2w52e7m5hqq6ipja3g2i",
+      "supply": 379,
+      "royaltyBps": 750,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/1.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/2.png",
+          "ok": true,
+          "url": "https://dweb.link/ipfs/bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/2.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/3.png",
+          "ok": true,
+          "url": "https://dweb.link/ipfs/bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/3.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/4.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/4.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos #1",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos #2",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos #3",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos #4",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos #5",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos #6",
+          "image": "ipfs://bafybeiaovag4libeo4ip3nodhhbtsxt2ka6xysy3q7d723dc7top7pppau/6.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1Bz14B1LkAQyvvqGKDxBe8ER6eb3RYMmuu",
+      "trades": 854,
+      "name": "Koinos Army Journey",
+      "symbol": "JOURNEY",
+      "description": null,
+      "uri": "https://bafybeibduv32tur6g3odl3prtidzvplrrdotjce2q6gtmj2wzsflyukh6y.ipfs.nftstorage.link",
+      "supply": 600,
+      "royaltyBps": 1000,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/1.jpg",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca/1.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/2.jpg",
+          "ok": true,
+          "url": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/2.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/3.jpg",
+          "ok": true,
+          "url": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/3.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/4.jpg",
+          "ok": true,
+          "url": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/4.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #1",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/1.jpg"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #2",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/2.jpg"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #3",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/3.jpg"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #4",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/4.jpg"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #5",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/5.jpg"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Army Journey #6",
+          "image": "https://bafybeidqlw5b6dhg2kuckuw2k45pfyhnfhefm2lp6ay7csfyj2bdkeqpca.ipfs.nftstorage.link/6.jpg"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1HbnGZzdpQ6Fc79rgmTrEopK3u4w9mCgfK",
+      "trades": 824,
+      "name": "Physical Koin Raffle",
+      "symbol": "PKR",
+      "description": null,
+      "uri": "https://bafybeigck4233izv6kit27zoaafhy77s5hz3to342fzhcm5ag3f3c4apjq.ipfs.nftstorage.link/",
+      "supply": 200,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 1,
+      "imgLive": 1,
+      "images": [
+        {
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp",
+          "ok": true,
+          "url": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp",
+          "type": "image/webp"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Physical Koin Raffle #1",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #2",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #3",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #4",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #5",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #6",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1AhGbSHUVaTWV1oqJRSTihsi2ofEvvYevg",
+      "trades": 750,
+      "name": "Koincity Moon Boys",
+      "symbol": "KCMB",
+      "description": null,
+      "uri": "https://bafybeididpafbao4s4xwaljndgtjc5it7kzxboftxm47vnrnwokfinlklq.ipfs.nftstorage.link/",
+      "supply": 75,
+      "royaltyBps": 250,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/01.png",
+          "ok": true,
+          "url": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/01.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/02.png",
+          "ok": true,
+          "url": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/02.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/03.png",
+          "ok": true,
+          "url": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/03.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/04.png",
+          "ok": true,
+          "url": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/04.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koincity Moon Boys #1",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/01.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koincity Moon Boys #2",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/02.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koincity Moon Boys #3",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/03.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koincity Moon Boys #4",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/04.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koincity Moon Boys #5",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/05.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koincity Moon Boys #6",
+          "image": "https://bafybeigyou6fgakxdatbpkzd6i2dggh47eh3uzxcootujjgdsjfpl6vuqq.ipfs.nftstorage.link/06.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1HCbbw7sbE6FNfzezs49AzFUSGezUEj3dC",
+      "trades": 688,
+      "name": "Gamblers Genesis",
+      "symbol": "KRGG",
+      "description": null,
+      "uri": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmdwksmJ9WHwJ724675PUR1xCpTdPNaqh2ohJGwnmY5RfE/",
+      "supply": 90,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/01.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/01.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/02.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/02.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/03.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/03.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/04.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/04.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #1",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/01.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #2",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/02.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #3",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/03.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #4",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/04.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #5",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/05.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gamblers Genesis #6",
+          "image": "https://lime-mid-mandrill-793.mypinata.cloud/ipfs/QmZs8t8USMWYVjDCTDjz3e5QXh5w1faWz33uYk54qcanR7/06.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1ERh8vnZaghRHmVMLZpRoke8mxTK7vRDup",
+      "trades": 428,
+      "name": "Konio Ancient",
+      "symbol": "KOAN",
+      "description": null,
+      "uri": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmX47W39ABh1mFBuP7jjiGLoLUvdXfoV9zhf1upfC1UQgq/",
+      "supply": 48,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x31.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x31.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x32.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x32.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x33.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x33.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x34.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x34.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Hadrian Aureus",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x31.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Cnidian Stater",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x32.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Ancient Egypt Deben",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x33.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Carian Stater",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x34.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Maya Coin",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x35.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Viking Coin",
+          "image": "https://teal-gentle-bass-550.mypinata.cloud/ipfs/QmQKkpJt8Hfqnb2ShXcPHWhvc8N8Gwgn2HjC1oiPZHH2Jq/0x36.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1QKECm99uzA3GmpC9JVY8YTRHwLYiVVSwU",
+      "trades": 183,
+      "name": "Koinos Puppies",
+      "symbol": "KOPUP",
+      "description": null,
+      "uri": "https://koinospuppies.mypinata.cloud/ipfs/QmUy78C83JPsxVnmLnP1AoMAX89qyEw11Ftt1dDKVjBiBr/",
+      "supply": 155,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/1.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/2.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/2.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/3.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/3.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/4.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/4.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #1",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #2",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #3",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #4",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #5",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos Puppies #6",
+          "image": "ipfs://QmVVdY3BocP49EVwP1uThyHwBoLaqM9fdRQhLptyr5ZcUF/6.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1CXSeGtcUTXH6pSCCF5FpPC5HgYJSbJEvs",
+      "trades": 98,
+      "name": "Trans.Ex",
+      "symbol": "TRSX",
+      "description": null,
+      "uri": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmfGFpkpYzCa3oQhVz4KvQE1tA8Lf9SAJeyvHK33Y4DTDa",
+      "supply": 72,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/1.JPG",
+          "ok": true,
+          "url": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/1.JPG",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/2.jpg",
+          "ok": true,
+          "url": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/2.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/3.jpg",
+          "ok": true,
+          "url": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/3.jpg",
+          "type": "image/jpeg"
+        },
+        {
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/4.jpg",
+          "ok": true,
+          "url": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/4.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #1",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/1.JPG"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #2",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/2.jpg"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #3",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/3.jpg"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #4",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/4.jpg"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #5",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/5.jpg"
+        },
+        {
+          "label": "7",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trans_Ex #7",
+          "image": "https://salmon-negative-koi-521.mypinata.cloud/ipfs/QmaDzFsghdxtYYnqBfMKsPognLc6dE1aZRsGajiWPdKUTm/7.jpg"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "121eg6YiaC5JiqupYcSUAeKAC5aNvmSsve",
+      "trades": 78,
+      "name": "MINI MARVELS",
+      "symbol": "MMR",
+      "description": null,
+      "uri": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmQNPyVm85dMVSK2MtvTarrbEp9HuvYrBC7CXeVmDWVwRb/",
+      "supply": 63,
+      "royaltyBps": 800,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/1.png",
+          "ok": true,
+          "url": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/2.png",
+          "ok": true,
+          "url": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/2.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/3.png",
+          "ok": true,
+          "url": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/3.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/4.png",
+          "ok": true,
+          "url": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/4.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #1",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #2",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #3",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #4",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #5",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mini Marvels #6",
+          "image": "https://stuck-violet-cougar.myfilebase.com/ipfs/QmPesgdpM8iTkz68z9KVumFMGSMPxLp2fPrjx8UV1fLo4g/6.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1CKDdmrQqzqdEZRpLJYt4V1XJXBpoGGWZP",
+      "trades": 75,
+      "name": "K.Samurai",
+      "symbol": "KS",
+      "description": null,
+      "uri": "https://gateway.pinata.cloud/ipfs/QmXjBUSrjM1jFQeormQRZxKE4z5HL64PdTXP8oBgFtSpGQ",
+      "supply": 50,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/01.png",
+          "ok": true,
+          "url": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/01.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/02.png",
+          "ok": true,
+          "url": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/02.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/03.png",
+          "ok": true,
+          "url": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/03.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/04.png",
+          "ok": true,
+          "url": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/04.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #1",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/01.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #2",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/02.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #3",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/03.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #4",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/04.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #5",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/05.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Gokenin #6",
+          "image": "https://chocolate-elegant-grouse-203.mypinata.cloud/ipfs/QmcLQZkmCkJBzZG2ENQSoUzRsXPt1EVhYUeZd4qJB3ZfmR/06.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1E6EKDGSeXsZKhX4DPTNxY8FWvCQnTBbU6",
+      "trades": 64,
+      "name": "Gambit Chess Club",
+      "symbol": "GCC",
+      "description": null,
+      "uri": "https://bafybeihcpj6v6ykgif2z6ukjss5gkasmzt7haztd3zdpy5iy7pirgcv3ee.ipfs.nftstorage.link/",
+      "supply": 88,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/1.png",
+          "ok": true,
+          "url": "https://dweb.link/ipfs/bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/2.png",
+          "ok": true,
+          "url": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/2.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/4.png",
+          "ok": true,
+          "url": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/4.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/5.png",
+          "ok": true,
+          "url": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/5.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #1",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #002",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/2.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #4",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #5",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #6",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/6.png"
+        },
+        {
+          "label": "7",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Gambit Chess Club #7",
+          "image": "https://bafybeigoqvkmahzaddmgcs4uxqsfkzzy2teml6vznuiymbthdoj4u2aucq.ipfs.nftstorage.link/7.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1KEfvtos9DwNt9TtDe4Tv5wd5tBRs4MfnF",
+      "trades": 54,
+      "name": "Postcard Girls",
+      "symbol": "GIRLS",
+      "description": null,
+      "uri": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmPP7n6pae28ZG49W6K7ZgC9fYVZ7QHaQ9BnWR7PViMB9D/",
+      "supply": 50,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/1.png",
+          "ok": true,
+          "url": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/10.png",
+          "ok": true,
+          "url": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/10.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/20.png",
+          "ok": true,
+          "url": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/20.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/30.png",
+          "ok": true,
+          "url": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/30.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Aiko Mizuki",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/1.png"
+        },
+        {
+          "label": "10",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Yui Kanade",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/10.png"
+        },
+        {
+          "label": "20",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Nanami Kasumi",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/20.png"
+        },
+        {
+          "label": "30",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mei Tsukiko",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/30.png"
+        },
+        {
+          "label": "40",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Yuna Ichika",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/40.png"
+        },
+        {
+          "label": "50",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Shiori Aoi",
+          "image": "https://black-competitive-whale-378.mypinata.cloud/ipfs/QmW63i196AEZL4nMi3TfyGm3FfES14E8cU21Xe3fv53LQP/50.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1HUQuGsxs4CPcCdLLtXsGrMYJfRNU92cvt",
+      "trades": 46,
+      "name": "SAIArt -Te Ammo",
+      "symbol": "SSA",
+      "description": null,
+      "uri": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXTs1u3ZdohJ7AeUmJdGczw6qQvEwhVGB59TYJkrHtdNs/",
+      "supply": 30,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/Trigger%20Happy%20Queen.png",
+          "ok": true,
+          "url": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/Trigger%20Happy%20Queen.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/the%20Punisher%20skull.png",
+          "ok": true,
+          "url": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/the%20Punisher%20skull.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/silver%20bullet%20unicorn360.gif",
+          "ok": true,
+          "url": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/silver%20bullet%20unicorn360.gif",
+          "type": "image/gif"
+        },
+        {
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/seabastian%20the%20shotgun%20shel-fish%20360.gif",
+          "ok": true,
+          "url": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/seabastian%20the%20shotgun%20shel-fish%20360.gif",
+          "type": "image/gif"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Trigger Happy Queen",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/Trigger%20Happy%20Queen.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Punisher Skull 1",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/the%20Punisher%20skull.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Silver Bullet Unicorn",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/silver%20bullet%20unicorn360.gif"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Seabastian the Shotgun Shellfish",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/seabastian%20the%20shotgun%20shel-fish%20360.gif"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Relax and Smell the Flowers",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/Relax%20and%20smell%20the%20flowers%20Punk-da.gif"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Pussycat Doll",
+          "image": "https://stingy-silver-mule.myfilebase.com/ipfs/QmXR5f12qTk1R4TZqzhTvCbEyeS1Tr6L7HdJpQzyCvH7zw/Pussycat%20doll.gif"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1DE1PJt2mMoJ5FHiz4cNL3Fq2iETx5jXHA",
+      "trades": 6,
+      "name": "Koinos 2nd Anniversary",
+      "symbol": "K2A",
+      "description": null,
+      "uri": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmcrSnxdMY2u684y2oZxs3rabXsJNtfLfQNk9nJZdTHg4v/",
+      "supply": 50,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/1.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/10.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/10.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/20.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/20.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/30.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/30.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #1",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/1.png"
+        },
+        {
+          "label": "10",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #10",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/10.png"
+        },
+        {
+          "label": "20",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #20",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/20.png"
+        },
+        {
+          "label": "30",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #30",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/30.png"
+        },
+        {
+          "label": "40",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #40",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/40.png"
+        },
+        {
+          "label": "50",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "2nd Anniversary #50",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmRYZgBRdir2DmSgW9cAqDbrLtduv8BWRWcZ44BVsD1egb/50.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1ALZxd38zos3RFPz3ehVpH6TPKmwBHiHcv",
+      "trades": 4,
+      "name": "Mana Mages",
+      "symbol": "MM",
+      "description": null,
+      "uri": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/Qmb3EKmiFxd1rpaLKJPddncKy4WS4nMyd1P9LVBtCR8sSU/",
+      "supply": 31,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 4,
+      "imgLive": 4,
+      "images": [
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/1.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/1.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/7.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/7.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/13.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/13.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/19.png",
+          "ok": true,
+          "url": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/19.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #1",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/1.png"
+        },
+        {
+          "label": "7",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #7",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/7.png"
+        },
+        {
+          "label": "13",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #13",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/13.png"
+        },
+        {
+          "label": "19",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #19",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/19.png"
+        },
+        {
+          "label": "25",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #25",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/25.png"
+        },
+        {
+          "label": "31",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Mana Mage #31",
+          "image": "https://magenta-known-gayal-176.mypinata.cloud/ipfs/QmVYEbir7NdJheq3gyySAPxGPsETxWdHmoxksvkAVCxbC7/31.png"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1DzG86fM4TMRgFhZ94Me4EKzXdJtN1L4NH",
+      "trades": 2,
+      "name": "Physical Koin Raffle",
+      "symbol": "PKR",
+      "description": null,
+      "uri": "https://bafybeigck4233izv6kit27zoaafhy77s5hz3to342fzhcm5ag3f3c4apjq.ipfs.nftstorage.link",
+      "supply": 19,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 1,
+      "imgLive": 1,
+      "images": [
+        {
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp",
+          "ok": true,
+          "url": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp",
+          "type": "image/webp"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "38",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Physical Koin Raffle #38",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "48",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Physical Koin Raffle #48",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "58",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #58",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "62",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #62",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "65",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #65",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        },
+        {
+          "label": "66",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Physical Koin Raffle #66",
+          "image": "https://bafybeif753rqtwrm6fxb3f3qtmplgaz4af5wdmok6bodlml32ysl7572wm.ipfs.nftstorage.link/default.webp"
+        }
+      ],
+      "verdict": "healthy"
+    },
+    {
+      "address": "1NxweGyS8pzR84xUY4AZrChhUC4pdGEpQk",
+      "trades": 314,
+      "name": "Koinos World",
+      "symbol": "KWD",
+      "description": null,
+      "uri": "https://bafybeigsxmeaaugns46gdjc2u2pe5amntqi4hma5l3fj6slg3w5fworocu.ipfs.nftstorage.link/",
+      "supply": 210,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 5,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 3,
+      "images": [
+        {
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/2.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/3.png",
+          "ok": true,
+          "url": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/3.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/4.png",
+          "ok": true,
+          "url": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/4.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/5.png",
+          "ok": true,
+          "note": "no gateway serves it",
+          "url": "https://ipfs.io/ipfs/bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm/5.png",
+          "type": "image/png",
+          "retried": true
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Tier 1 - Amsterdam",
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Tier 1 - Antwerp",
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Tier 1 - Barcelona",
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Tier 1 - Berlin",
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Tier 1 - Bern",
+          "image": "https://bafybeieyfbvvyomqfvkhdxso3g7pk3e73mnbix5zlyrznlrhjsjtcekpgm.ipfs.nftstorage.link/6.png"
+        }
+      ],
+      "verdict": "degraded"
+    },
+    {
+      "address": "1FB7geE8MN1ViG91rkBE5iu27s2Khuo257",
+      "trades": 288,
+      "name": "The Crew",
+      "symbol": "TCR",
+      "description": null,
+      "uri": "ipfs://bafybeifqqtf7o7ges5urj3sd4xhakcht7lvkstws3i2qiebp7mpypvzemm",
+      "supply": 60,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 2,
+      "images": [
+        {
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Mastermind.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Investor.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Investor.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Guide.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Guide.png",
+          "type": "image/png"
+        },
+        {
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Developer.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Mastermind",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Mastermind.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Investor",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Investor.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Guide",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Guide.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Developer",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Developer.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "The Networker",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Networker.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "The Creative",
+          "image": "ipfs://bafybeidssqmc2cjlpmy3rnxq6ehbvvwb3pqewtndhfcqlznx6bw2jsig3y/Creative.png"
+        }
+      ],
+      "verdict": "degraded"
+    },
+    {
+      "address": "1MDyZtgrmBbH63FuGd7JXT4mSQfgBAUzWk",
+      "trades": 119,
+      "name": "Koin Press Badge",
+      "symbol": "KPB",
+      "description": null,
+      "uri": "ipfs://bafybeierlyjjivgfuzu2ap2bjjh7aan66gk4a2hoj4ikfyikq4sforzk3a",
+      "supply": 49,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 4,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 1,
+      "images": [
+        {
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/02.png",
+          "ok": true,
+          "note": "no gateway serves it",
+          "url": "https://dweb.link/ipfs/bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/02.png",
+          "type": "image/png",
+          "retried": true
+        },
+        {
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/04.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/05.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/06.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Press Badge #02",
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/02.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Press Badge #04",
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/04.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Press Badge #05",
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/05.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Press Badge #06",
+          "image": "ipfs://bafybeial7korh5zldyo7qmz4kkeeo5tt7tybhd7jiorz2nx7iwvpzeadhi/assets/06.png"
+        }
+      ],
+      "verdict": "degraded"
+    },
+    {
+      "address": "1EwYTYLrxN8iyXTh1Acso9LgV5TGP9e1ey",
+      "trades": 86,
+      "name": "Imaginary World",
+      "symbol": "IMW",
+      "description": null,
+      "uri": "https://bafybeidj272vyt4dzhex6zmzp4666xjev55iqblbzu4i5qcq7i6ykhh2ti.ipfs.nftstorage.link",
+      "supply": 55,
+      "royaltyBps": 200,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 2,
+      "metaSources": [
+        "uri ipfs.io"
+      ],
+      "imgChecked": 2,
+      "imgLive": 2,
+      "images": [
+        {
+          "image": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/2.png",
+          "ok": true,
+          "url": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/2.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/6.png",
+          "ok": true,
+          "url": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/6.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Imaginary World #2",
+          "image": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Imaginary World #6",
+          "image": "https://bafybeiemfmyqanayds2hx6wkenkci3qtwupyip2jm3plzjxlojy4hh5gla.ipfs.nftstorage.link/6.png"
+        }
+      ],
+      "verdict": "degraded"
+    },
+    {
+      "address": "1GW3Nni75gFxwqLUpbzhkY6dYgdaEiRv7T",
+      "trades": 5,
+      "name": "Maine Koon Cats",
+      "symbol": "MKC",
+      "description": null,
+      "uri": "https://nftstorage.link/ipfs/bafybeide25yvvxclahvpiskdq5qbiinfwr5vp4oktllsvelimqfkivhc7y",
+      "supply": 760,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 5,
+      "metaSources": [
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 3,
+      "images": [
+        {
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/2.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/3.png",
+          "ok": true,
+          "url": "https://ipfs.io/ipfs/bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea/3.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/4.png",
+          "ok": true,
+          "url": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/4.png",
+          "type": "image/png"
+        },
+        {
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/5.png",
+          "ok": true,
+          "url": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/5.png",
+          "type": "image/png"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "CAT #2",
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "CAT #3",
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "CAT #4",
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "CAT #5",
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "CAT #6",
+          "image": "https://bafybeicats52yipm3s7wqn5u26gkdrfcdqtihr62rxdvastbyw75c5kbea.ipfs.nftstorage.link/6.png"
+        }
+      ],
+      "verdict": "degraded"
+    },
+    {
+      "address": "1EwJUW4BFbA4EGmSyB9bgdhB3gk2f3shRN",
+      "trades": 10334,
+      "name": "Kondor Elementus",
+      "symbol": "KONDOR-ELEMENTUS",
+      "description": null,
+      "uri": "https://kondor-nft-api-w6enmqacja-uc.a.run.app/kondor-elementus",
+      "supply": 125,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "chain"
+      ],
+      "imgChecked": 4,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/1.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/20.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/79.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/105.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #1",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/1.png"
+        },
+        {
+          "label": "20",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #20",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/20.png"
+        },
+        {
+          "label": "79",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #79",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/79.png"
+        },
+        {
+          "label": "105",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #105",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/105.png"
+        },
+        {
+          "label": "531",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #531",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/531.png"
+        },
+        {
+          "label": "1111",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Kondor Elementus #1111",
+          "image": "https://storage.googleapis.com/kondor-elementus-nft/elementus/1111.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "19g4oTs39Lg3ZCjKs9w9B6NjQzswB69QwU",
+      "trades": 1343,
+      "name": "Koinos Punks",
+      "symbol": "KPunks",
+      "description": null,
+      "uri": "https://bafybeieoh2yftzgbufqjpzbf323rvak7mlgmetadrws43js73k45bdceay.ipfs.nftstorage.link/",
+      "supply": 200,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 5,
+      "metaSources": [
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://link.storjshare.io/raw/jusikj4odfeu6fjms3cqwa7t4e3a/koinospunks/nfts/2.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://link.storjshare.io/raw/jw3vhhyaetz5aaa5b5yldde2uraa/koinospunks/nfts/3.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://link.storjshare.io/raw/jvkbummtcdkrfrlsrxexrqq3ll4a/koinospunks/nfts/4.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://link.storjshare.io/raw/jwmkrrla7t3onwkmzu77cvosxmwq/koinospunks/nfts/5.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos Punks #2",
+          "image": "https://link.storjshare.io/raw/jusikj4odfeu6fjms3cqwa7t4e3a/koinospunks/nfts/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos Punks #3",
+          "image": "https://link.storjshare.io/raw/jw3vhhyaetz5aaa5b5yldde2uraa/koinospunks/nfts/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos Punks #4",
+          "image": "https://link.storjshare.io/raw/jvkbummtcdkrfrlsrxexrqq3ll4a/koinospunks/nfts/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos Punks #5",
+          "image": "https://link.storjshare.io/raw/jwmkrrla7t3onwkmzu77cvosxmwq/koinospunks/nfts/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos Punks #6",
+          "image": "https://link.storjshare.io/raw/jvswgmhewxpdoqq4drmrs6iz2woq/koinospunks/nfts/6.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "15ouFhmcE2wcK5poiSa2T8U9EoqzqMC6Qw",
+      "trades": 341,
+      "name": "Eve NFT",
+      "symbol": "EveNFT",
+      "description": null,
+      "uri": "https://bafybeibc6e3ku2upxm5zi4armxicjuonadjqwlwldwkjke5ugi7bwatycy.ipfs.nftstorage.link/ipfs/bafybeibc6e3ku2upxm5zi4armxicjuonadjqwlwldwkjke5ugi7bwatycy/",
+      "supply": 101,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 3,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 3,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/1.jpg",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/5.jpg",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/6.jpg",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Eve NFT #1",
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/1.jpg"
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Eve NFT #5",
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/5.jpg"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Eve NFT #6",
+          "image": "https://bafybeie67t2gblgficyp6262yjqwsraypj64x4zfdwrrnzlqsvrjkoewla.ipfs.nftstorage.link/6.jpg"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "17SvQYVtXLb4cKLQWpmZ2yWeQ2ACFAhgZW",
+      "trades": 314,
+      "name": "Koinos CyborgPunks",
+      "symbol": "KCPunks",
+      "description": null,
+      "uri": "https://bafybeiesdsswvimmceq7b5fpnckiieeubjgixcxzleglvzhfflvkzuu36q.ipfs.nftstorage.link/",
+      "supply": 50,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "uri ipfs.io",
+        "uri dweb.link"
+      ],
+      "imgChecked": 4,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/1.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/2.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/3.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/4.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos CyborgPunks #1",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos CyborgPunks #2",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos CyborgPunks #3",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/3.png"
+        },
+        {
+          "label": "4",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos CyborgPunks #4",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/4.png"
+        },
+        {
+          "label": "5",
+          "hasMeta": true,
+          "source": "uri ipfs.io",
+          "name": "Koinos CyborgPunks #5",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/5.png"
+        },
+        {
+          "label": "6",
+          "hasMeta": true,
+          "source": "uri dweb.link",
+          "name": "Koinos CyborgPunks #6",
+          "image": "https://bafybeidhe4vxvaebgyi7e446jg33v3mtjukxwp4edxjd2uczlvwiuyt2hy.ipfs.nftstorage.link/6.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "1NGmGtQZ2HEjzsVr16FX7Tab7jM98FWmEy",
+      "trades": 211,
+      "name": "Kuku Playing Cards",
+      "symbol": "KUKU-PLAYING-CARDS",
+      "description": null,
+      "uri": "https://nft.kuku.games/playing-cards",
+      "supply": 52,
+      "royaltyBps": 7500,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "chain"
+      ],
+      "imgChecked": 4,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://nft.kuku.games/1/images/AS.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.kuku.games/1/images/JS.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.kuku.games/1/images/8H.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.kuku.games/1/images/5D.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "AS",
+          "image": "https://nft.kuku.games/1/images/AS.png"
+        },
+        {
+          "label": "11",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "JS",
+          "image": "https://nft.kuku.games/1/images/JS.png"
+        },
+        {
+          "label": "21",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "8H",
+          "image": "https://nft.kuku.games/1/images/8H.png"
+        },
+        {
+          "label": "31",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "5D",
+          "image": "https://nft.kuku.games/1/images/5D.png"
+        },
+        {
+          "label": "41",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "2C",
+          "image": "https://nft.kuku.games/1/images/2C.png"
+        },
+        {
+          "label": "52",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "KC",
+          "image": "https://nft.kuku.games/1/images/KC.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "1KgWLvTzQvJgodE6qUzMQDrpE6v4sSFRSA",
+      "trades": 104,
+      "name": "Konio Ancient",
+      "symbol": "KOAN",
+      "description": null,
+      "uri": "https://nft.konio.io/ancient",
+      "supply": 48,
+      "royaltyBps": 10000,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 6,
+      "metaSources": [
+        "chain"
+      ],
+      "imgChecked": 4,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "https://nft.konio.io/ancient/images/0x31.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.konio.io/ancient/images/0x3130.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.konio.io/ancient/images/0x3139.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        },
+        {
+          "image": "https://nft.konio.io/ancient/images/0x3239.png",
+          "ok": false,
+          "note": "no gateway serves it"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Hadrian Aureus",
+          "image": "https://nft.konio.io/ancient/images/0x31.png"
+        },
+        {
+          "label": "10",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Archaic Athenian Didrachm",
+          "image": "https://nft.konio.io/ancient/images/0x3130.png"
+        },
+        {
+          "label": "19",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Lydian Stater",
+          "image": "https://nft.konio.io/ancient/images/0x3139.png"
+        },
+        {
+          "label": "29",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Incas Patac",
+          "image": "https://nft.konio.io/ancient/images/0x3239.png"
+        },
+        {
+          "label": "38",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Nero Sestertius",
+          "image": "https://nft.konio.io/ancient/images/0x3338.png"
+        },
+        {
+          "label": "48",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "Parthian Drachm",
+          "image": "https://nft.konio.io/ancient/images/0x3438.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "18nNeqh2pec6u4gRdkS2qtgFE5qsA2crDd",
+      "trades": 6,
+      "name": "my-test-contract",
+      "symbol": "MyTestContract",
+      "description": null,
+      "uri": "https://example.com",
+      "supply": 3,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 3,
+      "metaResolved": 3,
+      "metaSources": [
+        "chain"
+      ],
+      "imgChecked": 3,
+      "imgLive": 0,
+      "images": [
+        {
+          "image": "http://example.com/1.png",
+          "ok": false,
+          "note": "not https (site will not render it)"
+        },
+        {
+          "image": "http://example.com/2.png",
+          "ok": false,
+          "note": "not https (site will not render it)"
+        },
+        {
+          "image": "http://example.com/3.png",
+          "ok": false,
+          "note": "not https (site will not render it)"
+        }
+      ],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "My NFT #1",
+          "image": "http://example.com/1.png"
+        },
+        {
+          "label": "2",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "My NFT #2",
+          "image": "http://example.com/2.png"
+        },
+        {
+          "label": "3",
+          "hasMeta": true,
+          "source": "chain",
+          "name": "My NFT #3",
+          "image": "http://example.com/3.png"
+        }
+      ],
+      "verdict": "images-dead"
+    },
+    {
+      "address": "1N2AhqGGticZ8hYmwNPWoroEBvTp3YGsLW",
+      "trades": 458,
+      "name": "OG-REX",
+      "symbol": "REX",
+      "description": null,
+      "uri": "https://ogrex.io/api/rex/",
+      "supply": 350,
+      "royaltyBps": 600,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1BHnZrZnFTo17TnqiWnP7iLDHtnDgBSgQr",
+      "trades": 367,
+      "name": "Koincity Ninja Boys",
+      "symbol": "KCMB",
+      "description": null,
+      "uri": "https://koincity.com/storage/nft/kcmb/ed-3/metadata/",
+      "supply": 75,
+      "royaltyBps": 500,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1B7qbYg5TuHULf2Q5LjHLUEMRR8ofCFUS2",
+      "trades": 341,
+      "name": "Koincity Mutant Boys",
+      "symbol": "KCMB",
+      "description": null,
+      "uri": "https://koincity.com/storage/nft/kcmb/ed-2/metadata/",
+      "supply": 47,
+      "royaltyBps": 450,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1BPyuZC8dAcLptDDkxj2RqXPgkVLc7xZKM",
+      "trades": 140,
+      "name": "Koindx support token",
+      "symbol": "KST",
+      "description": null,
+      "uri": "https://nft.koindx.com/api/support",
+      "supply": 95,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1Cs4tVzdRZZ4DPYEHpiULe4VMemjiK6p1Y",
+      "trades": 51,
+      "name": "Koinos Astronauts",
+      "symbol": "KAMP",
+      "description": null,
+      "uri": "https://planetkoinos.com/kampmetadata",
+      "supply": 180,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "8",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "22",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "37",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "38",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "39",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1KANGodsBD74xBuoBVoJE2x2PiRyDbfM2i",
+      "trades": 41,
+      "name": "Kanvas Gods",
+      "symbol": "KANGODS",
+      "description": null,
+      "uri": "https://kanvas-app.com/api/kanvas_gods/get_metadata",
+      "supply": 15,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1PQX6fsMtoibLkbnJFV8myMeVX6pabYV8t",
+      "trades": 40,
+      "name": "local",
+      "symbol": "Local",
+      "description": null,
+      "uri": "https://example.com",
+      "supply": 20,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "8",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "12",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "16",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "20",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1KyZyhNwiDo6a93f3FvK8pxspKdgEtQDwa",
+      "trades": 25,
+      "name": "Kondor NFTs",
+      "symbol": "KONDOR",
+      "description": null,
+      "uri": "https://kondor-nft-api-w6enmqacja-uc.a.run.app/kondor-nfts",
+      "supply": 27,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "China",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "Brazil",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "Poland",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "Vietnam",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "Netherlands",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "United Kingdom",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1EnaBDVTA5hqXokC2dDzt2JT5eHv1y7ff1",
+      "trades": 24,
+      "name": "koinos.fun",
+      "symbol": "FUN",
+      "description": null,
+      "uri": "https://www.koinos.fun/metadata",
+      "supply": 11760,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "20",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "40",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "60",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "80",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "100",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "16hJzEnEuaeUV3FbBpYaGewLG4dhqk8efY",
+      "trades": 16,
+      "name": "The Adoration of the Cryptos",
+      "symbol": "Triumph",
+      "description": null,
+      "uri": "https://bafybeiawmitxwusmzgrcfif5fq4kr2y2czj2jv7mp3b4uh6mfnzdhlkcby.ipfs.nftstorage.link",
+      "supply": 3,
+      "royaltyBps": 770,
+      "scheme": "legacy",
+      "sampled": 3,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1H3S7vB73KVBACSBAHEosCqSoJJb1t8Ahk",
+      "trades": 9,
+      "name": "WOLF OF KOINOS",
+      "symbol": "WFK",
+      "description": null,
+      "uri": "https://koinoswolf.nyc3.cdn.digitaloceanspaces.com/wolfofkoinos/metadata/",
+      "supply": 18,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1LD4QuwJETuvqXhGFHkyjsnDFDysV8DHbF",
+      "trades": 3,
+      "name": "Free NFT",
+      "symbol": "FNFT",
+      "description": null,
+      "uri": "https://armana.io/api/metadata",
+      "supply": 81,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "2",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "3",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "4",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "5",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "6",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "1ND7h8r5hWnVB6Yv8yC6Hpu777T2qU378M",
+      "trades": 2,
+      "name": "koinos.fun",
+      "symbol": "FUN",
+      "description": null,
+      "uri": "https://www.koinos.fun/metadata",
+      "supply": 345,
+      "royaltyBps": 0,
+      "scheme": "kcs2",
+      "sampled": 6,
+      "metaResolved": 0,
+      "metaSources": [],
+      "imgChecked": 0,
+      "imgLive": 0,
+      "images": [],
+      "sampleTokens": [
+        {
+          "label": "1",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "20",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "40",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "60",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "80",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        },
+        {
+          "label": "100",
+          "hasMeta": false,
+          "source": null,
+          "name": null,
+          "image": null
+        }
+      ],
+      "verdict": "metadata-dead"
+    },
+    {
+      "address": "13tmzDmfqCsbYT26C4CmKxq86d33senqH3",
+      "trades": 713,
+      "name": "Koinos Account Protocol",
+      "symbol": "KAP",
+      "description": null,
+      "uri": "https://kap.domains/api/metadata",
+      "supply": 976,
+      "royaltyBps": 0,
+      "scheme": "legacy",
+      "verdict": "no-tokens-found"
+    }
+  ]
+}
