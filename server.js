@@ -285,13 +285,23 @@ async function collectionOrders(addr) {
   });
 }
 
+/* Kuku Playing Cards wrote its on-chain metadata JSON.stringify'd twice:
+   the first parse yields a STRING, reading .image off it yields nothing,
+   and the whole collection rendered artless with its metadata sitting
+   right there on chain. Unwrap at most once, and only keep objects. */
+function parseMeta(text) {
+  let m = JSON.parse(text);
+  if (typeof m === 'string') m = JSON.parse(m);
+  return m && typeof m === 'object' ? m : null;
+}
+
 /** On-chain metadata first, uri fetch second — never an open proxy. */
 async function tokenMeta(addr, tokenIdHex) {
   return cached(`meta:${addr}:${tokenIdHex}`, 3600000, async () => {
     const c = nftC(addr);
     try {
       const { result } = await c.functions.metadata_of({ token_id: tokenIdHex });
-      if (result?.value) { try { return JSON.parse(result.value); } catch (_) {} }
+      if (result?.value) { try { const m = parseMeta(result.value); if (m) return m; } catch (_) {} }
     } catch (_) {}
     const info = await collectionInfo(addr);
     const base = String(info.uri || '').trim();
@@ -317,7 +327,8 @@ async function tokenMeta(addr, tokenIdHex) {
         const r = await fetch(`${c.root.replace(/\/$/, '')}/${c.name}`, { signal: AbortSignal.timeout(8000), size: 1048576 });
         if (!r.ok) continue;
         const text = (await r.text()).slice(0, 262144);
-        const parsed = JSON.parse(text);
+        const parsed = parseMeta(text);
+        if (!parsed) continue;
         metaPathHints.set(addr, c.idx);
         return parsed;
       } catch (_) {}
@@ -424,29 +435,29 @@ async function collectionIndex(addr) {
     /* Kollection-era contracts have no get_tokens at all — their only
        enumeration is per-owner. Every one of them numbers its tokens with
        plain decimal strings, so when the walk finds nothing but the
-       supply says otherwise, probe "1"…N (and "0"…N-1) against owner_of
-       and keep whichever ids exist. */
+       supply says otherwise, probe serials against owner_of and keep
+       whichever ids exist. Sparse drops (Koinos Astronauts: 180 minted,
+       serials scattered up to ~1000) mint out of order, so "1" and "0"
+       both missing proves nothing — walk in chunks until the supply is
+       accounted for, and only give up on decimal ids after 240 straight
+       misses from the start, which is what "ids are names, not numbers"
+       (KAP domains) looks like. */
     if (!ids.length) {
       const info = await collectionInfo(addr).catch(() => ({}));
       const supply = Math.min(Number(info.totalSupply || 0), INDEX_MAX_TOKENS);
       if (supply > 0) {
         const asHex = (s) => '0x' + [...s].map((ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-        const firstOwned = async (label) => {
-          try { return !!(await c.functions.owner_of({ token_id: asHex(label) })).result?.value; }
-          catch (_) { return false; }
-        };
-        const base = (await firstOwned('1')) ? 1 : (await firstOwned('0')) ? 0 : null;
-        if (base !== null) {
-          const probed = await mapPool(
-            Array.from({ length: supply }, (_, i) => asHex(String(base + i))),
-            META_CONCURRENCY,
-            async (tid) => {
-              const owner = (await c.functions.owner_of({ token_id: tid })).result?.value;
-              return owner ? tid : null;
-            });
-          ids.push(...probed.filter(Boolean));
-          partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
+        const cap = Math.min(Math.max(supply * 6, 60), 4 * INDEX_MAX_TOKENS);
+        for (let at = 0; at <= cap && ids.length < supply; at += 64) {
+          const chunk = Array.from({ length: Math.min(64, cap - at + 1) }, (_, i) => asHex(String(at + i)));
+          const hits = await mapPool(chunk, META_CONCURRENCY, async (tid) => {
+            try { return (await c.functions.owner_of({ token_id: tid })).result?.value ? tid : null; }
+            catch (_) { return null; }
+          });
+          ids.push(...hits.filter(Boolean));
+          if (at + 64 > 240 && !ids.length) break;
         }
+        if (ids.length) partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
       }
     }
     const capped = ids.slice(0, INDEX_MAX_TOKENS);

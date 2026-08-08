@@ -235,16 +235,16 @@ async function sampleIds(addr, supply, want) {
     try { return !!(await c.functions.owner_of({ token_id: asHex(label) })).result?.value; }
     catch (_) { return null; } // entry point missing → not an NFT at all
   };
-  const one = await owned('1');
-  const zero = one ? false : await owned('0');
-  if (one === null && zero === null) return { scheme: 'none', ids: [] };
-  const base = one ? 1 : zero ? 0 : null;
-  if (base === null) return { scheme: 'legacy', ids: [] };
+  if (await owned('1') === null) return { scheme: 'none', ids: [] };
+  /* Sparse drops (Koinos Astronauts: supply 180, serials scattered up to
+     ~1000) mint out of order — "1" and "0" missing proves nothing. Walk
+     the range and keep the hits, giving up only after a bounded number
+     of all-miss probes. */
   const ids = [];
-  const top = Math.min(Number(supply || 0) || 30, 500);
-  for (let i = 0; i < top && ids.length < want; i++) {
-    const label = String(base + i);
-    if (i === 0 || await owned(label)) ids.push(asHex(label));
+  const cap = Math.min(Math.max(Number(supply || 0) * 6, 60), 1200);
+  for (let i = 0; i <= cap && ids.length < want; i++) {
+    if (await owned(String(i))) ids.push(asHex(String(i)));
+    else if (i >= 240 && !ids.length) break; // nothing in 240 serials — ids are not decimal
   }
   return { scheme: 'legacy', ids };
 }
@@ -253,12 +253,22 @@ async function sampleIds(addr, supply, want) {
    with both filename conventions across both gateways, remembering per
    collection which combination answered. */
 const metaPathHints = new Map();
+
+/* Kuku Playing Cards wrote its on-chain metadata JSON.stringify'd twice:
+   one parse yields a string and the token reads as artless. Unwrap at
+   most once, and only keep objects — same treatment as server.js. */
+function parseMeta(text) {
+  let m = JSON.parse(text);
+  if (typeof m === 'string') m = JSON.parse(m);
+  return m && typeof m === 'object' ? m : null;
+}
+
 async function tokenMeta(addr, tokenIdHex, uriBase, giveUpUri) {
   const c = nftC(addr);
   try {
     const { result } = await c.functions.metadata_of({ token_id: tokenIdHex });
     if (result?.value) {
-      try { return { meta: JSON.parse(result.value), source: 'chain' }; } catch (_) {}
+      try { const m = parseMeta(result.value); if (m) return { meta: m, source: 'chain' }; } catch (_) {}
     }
   } catch (_) {}
   const base = String(uriBase || '').trim();
@@ -274,7 +284,8 @@ async function tokenMeta(addr, tokenIdHex, uriBase, giveUpUri) {
       const r = await fetch(`${cb.root.replace(/\/$/, '')}/${cb.name}`, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) continue;
       const text = (await r.text()).slice(0, 262144);
-      const parsed = JSON.parse(text);
+      const parsed = parseMeta(text);
+      if (!parsed) continue;
       metaPathHints.set(addr, cb.idx);
       return { meta: parsed, source: 'uri ' + new URL(cb.root).host };
     } catch (_) {}
@@ -290,7 +301,7 @@ const IMG_MAGIC = [
   [Buffer.from('<svg'), 'svg'],
   [Buffer.from('<?xml'), 'svg'],
 ];
-async function imageAlive(url) {
+async function imageAlive(url, timeoutMs = 10000) {
   /* the site's <img> loads rewriteImg(url) and falls back across
      gateways when the url carries a CID — try the same sequence */
   const primary = rewriteImg(url);
@@ -298,7 +309,7 @@ async function imageAlive(url) {
   const tries = [...new Set([primary, ...(ipfsRoots(primary) || [])])];
   for (const u of tries) {
     try {
-      const r = await fetch(u, { signal: AbortSignal.timeout(10000), headers: { Range: 'bytes=0-4095' } });
+      const r = await fetch(u, { signal: AbortSignal.timeout(timeoutMs), headers: { Range: 'bytes=0-4095' } });
       if (!r.ok) continue;
       const type = r.headers.get('content-type') || '';
       let head = Buffer.alloc(0);
@@ -363,6 +374,22 @@ async function probe(addr, occurrences) {
     const a = await imageAlive(u);
     row.images.push({ image: u, ...a });
     if (a.ok) row.imgLive++;
+  }
+  /* IPFS gateways time out on content they demonstrably hold (a cold CID
+     can 504 once and serve the next minute), so one miss is not a death
+     certificate. Anything that failed gets one patient retry — all of
+     them when some sibling loaded (a flip changes the verdict), just the
+     first when nothing did (dead hosts answer 404/401 fast anyway). */
+  if (row.imgLive < row.imgChecked) {
+    const failed = row.images.filter((i) => !i.ok);
+    const retry = row.imgLive > 0 ? failed : failed.slice(0, 1);
+    for (const im of retry) {
+      const again = await imageAlive(im.image, 25000);
+      if (again.ok) {
+        Object.assign(im, again, { retried: true });
+        row.imgLive++;
+      }
+    }
   }
   row.sampleTokens = metas.map((m) => ({
     label: m.label, hasMeta: !!m.meta, source: m.source || null,
