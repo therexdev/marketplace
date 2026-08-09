@@ -170,6 +170,36 @@ if (!registry) {
 /* ---------------- chain ---------------- */
 
 const provider = new Provider(RPCS);
+/* No chain read may hang forever. koilib's fetch carries no timeout, so
+   one silently dead TCP connection wedged the snapshot rebuild AND the
+   index worker for good — the home page froze at whatever the last
+   completed build knew (zeros, as it happened, for every listing).
+   A hung call now REJECTS after 25s and every caller already handles
+   rejection; the workers keep working. */
+const rawProviderCall = provider.call.bind(provider);
+const timedCall = (method, params) => Promise.race([
+  rawProviderCall(method, params),
+  new Promise((_, reject) => {
+    const t = setTimeout(() => reject(new Error(`rpc timeout: ${method}`)), 25000);
+    if (t.unref) t.unref();
+  }),
+]);
+/* READS also retry: the node intermittently answers with a Cloudflare
+   HTML page or times out, and a single dropped read was becoming a
+   wrong answer somewhere ("0 listed", a token without traits).
+   Transaction submission stays single-shot — a retried submit could
+   double-broadcast, and no error message is worth that. */
+provider.call = async (method, params) => {
+  const retries = /submit/.test(method) ? 0 : 2;
+  for (let i = 0; ; i++) {
+    try { return await timedCall(method, params); }
+    catch (e) {
+      const transient = /timeout|invalid json|deadline|ECONN|fetch failed/i.test(String(e && e.message || e));
+      if (i >= retries || !transient) throw e;
+      await new Promise((r) => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+};
 const dev = CFG.DEV_WIF ? Signer.fromWif(CFG.DEV_WIF) : null;
 if (dev) dev.provider = provider;
 
@@ -296,46 +326,56 @@ function parseMeta(text) {
   return m && typeof m === 'object' ? m : null;
 }
 
-/** On-chain metadata first, uri fetch second — never an open proxy. */
+/** On-chain metadata first, uri fetch second — never an open proxy.
+    Successes keep for an hour; a MISS keeps for two minutes — one bad
+    gateway moment cached as "no metadata" for an hour was starving
+    every retry of the art importer and every index rebuild. */
 async function tokenMeta(addr, tokenIdHex) {
-  return cached(`meta:${addr}:${tokenIdHex}`, 3600000, async () => {
-    const c = nftC(addr);
+  const key = `meta:${addr}:${tokenIdHex}`;
+  const hit = caches.get(key);
+  if (hit && Date.now() - hit.at < (hit.value === null ? 120000 : 3600000)) return hit.value;
+  const value = await tokenMetaFetch(addr, tokenIdHex);
+  caches.set(key, { at: Date.now(), value });
+  return value;
+}
+async function tokenMetaFetch(addr, tokenIdHex) {
+  const c = nftC(addr);
+  try {
+    const { result } = await c.functions.metadata_of({ token_id: tokenIdHex });
+    if (result?.value) { try { const m = parseMeta(result.value); if (m) return m; } catch (_) {} }
+  } catch (_) {}
+  const info = await collectionInfo(addr);
+  const base = String(info.uri || '').trim();
+  if (!base) return null;
+  if (!/^(https?|ipfs):\/\//.test(base)) return null;
+  /* Two file-name conventions exist in the wild — our own launches use
+     the human label, Kollection-era drops keyed files by the HEX id
+     (…/0x31). And ipfs.io routinely fails content that dweb.link still
+     serves, so anything with a CID in it gets both gateways before
+     giving up. The combination that answers first is remembered per
+     collection, so an index walk pays the discovery timeouts once, not
+     sixty times. */
+  const roots = ipfsRoots(base) || [base];
+  const names = [encodeURIComponent(hexToLabel(tokenIdHex)), tokenIdHex.toLowerCase()];
+  const combos = [];
+  for (const root of roots) for (const name of names) combos.push({ root, name, idx: combos.length });
+  const hint = metaPathHints.get(addr);
+  if (hint != null && hint > 0 && hint < combos.length) {
+    combos.unshift(combos.splice(hint, 1)[0]);
+  }
+  for (const c of combos) {
     try {
-      const { result } = await c.functions.metadata_of({ token_id: tokenIdHex });
-      if (result?.value) { try { const m = parseMeta(result.value); if (m) return m; } catch (_) {} }
+      const r = await fetch(`${c.root.replace(/\/$/, '')}/${c.name}`, { signal: AbortSignal.timeout(8000), size: 1048576 });
+      if (!r.ok) continue;
+      const text = (await r.text()).slice(0, 262144);
+      const parsed = parseMeta(text);
+      if (!parsed) continue;
+      metaPathHints.set(addr, c.idx);
+      return parsed;
     } catch (_) {}
-    const info = await collectionInfo(addr);
-    const base = String(info.uri || '').trim();
-    if (!base) return null;
-    if (!/^(https?|ipfs):\/\//.test(base)) return null;
-    /* Two file-name conventions exist in the wild — our own launches use
-       the human label, Kollection-era drops keyed files by the HEX id
-       (…/0x31). And ipfs.io routinely fails content that dweb.link still
-       serves, so anything with a CID in it gets both gateways before
-       giving up. The combination that answers first is remembered per
-       collection, so an index walk pays the discovery timeouts once, not
-       sixty times. */
-    const roots = ipfsRoots(base) || [base];
-    const names = [encodeURIComponent(hexToLabel(tokenIdHex)), tokenIdHex.toLowerCase()];
-    const combos = [];
-    for (const root of roots) for (const name of names) combos.push({ root, name, idx: combos.length });
-    const hint = metaPathHints.get(addr);
-    if (hint != null && hint > 0 && hint < combos.length) {
-      combos.unshift(combos.splice(hint, 1)[0]);
-    }
-    for (const c of combos) {
-      try {
-        const r = await fetch(`${c.root.replace(/\/$/, '')}/${c.name}`, { signal: AbortSignal.timeout(8000), size: 1048576 });
-        if (!r.ok) continue;
-        const text = (await r.text()).slice(0, 262144);
-        const parsed = parseMeta(text);
-        if (!parsed) continue;
-        metaPathHints.set(addr, c.idx);
-        return parsed;
-      } catch (_) {}
-    }
-    return null;
-  });
+  }
+  return null;
+
 }
 const metaPathHints = new Map(); // collection -> canonical index of the combo that answered
 
@@ -722,12 +762,23 @@ async function buildCollectionIndex(addr) {
      nothing as truth. Errors are counted apart from genuine emptiness,
      and a build that only erred THROWS instead of caching. */
   let enumErrors = 0;
+  const transientErr = (e) => /timeout|invalid json|deadline|ECONN|fetch failed/i.test(String((e && e.message) || e));
   for (let page = 0; page < 200; page++) {
     const args = { limit: 100, descending: false };
     if (start) args.start = start;
     let batch = [];
     try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
-    catch (_) { if (page > 0) enumErrors++; break; }
+    catch (e) {
+      /* Page 0 failing TRANSIENTLY is weather, and mistaking weather
+         for "this contract has no get_tokens" sends a KCS-2 collection
+         down the legacy decimal probe to a cleanly-cached empty index.
+         Refuse to guess: fail the build, the queue retries it. A page-0
+         error that is NOT transient really is a Kollection-era
+         contract; mid-walk failures keep what they got. */
+      if (page === 0 && transientErr(e)) throw new Error('get_tokens unreachable — retry, do not misdiagnose');
+      if (page > 0) enumErrors++;
+      break;
+    }
     ids.push(...batch);
     if (batch.length < 100) break;
     start = batch[batch.length - 1];
@@ -782,11 +833,13 @@ async function buildCollectionIndex(addr) {
      found, the rest of the walk renders from labels alone — and gets
      another chance on the next rebuild. */
   let metaMisses = 0;
+  const flaked = [];
   const tokens = (await mapPool(capped, META_CONCURRENCY, async (tid) => {
     const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
     const meta = giveUp ? null : await tokenMeta(addr, tid).catch(() => null);
     if (meta) metaMisses = 0; else metaMisses += 1;
     if (!meta && prev.has(tid)) return prev.get(tid);
+    if (!meta) flaked.push(tid);
     return {
       tokenId: tid, label: hexToLabel(tid),
       name: meta?.name || hexToLabel(tid),
@@ -794,6 +847,37 @@ async function buildCollectionIndex(addr) {
       traits: traitsOf(meta),
     };
   })).filter(Boolean);
+
+  /* If ANY metadata resolved, the path works and the misses were
+     weather — an RPC dropping a third of its calls, a giveUp streak
+     that condemned the rest of the walk. Retry the stragglers in
+     rounds while rounds still help, so an index built in a storm still
+     comes out whole. A collection where NOTHING resolved is genuinely
+     dark and skips this (dead hosts pay the timeouts once, not four
+     times). */
+  const anyLife = tokens.some((t) => t.image || Object.keys(t.traits).length) || metaPathHints.has(addr);
+  if (anyLife) {
+    let remaining = flaked.slice(0, 400);
+    for (let round = 0; round < 3 && remaining.length; round++) {
+      const next = [];
+      for (const tid of remaining) {
+        caches.delete(`meta:${addr}:${tid}`); // the miss just cached — retry for real
+        const meta = await tokenMeta(addr, tid).catch(() => null);
+        if (!meta) { next.push(tid); continue; }
+        const at = tokens.findIndex((t) => t.tokenId === tid);
+        if (at >= 0) {
+          tokens[at] = {
+            tokenId: tid, label: hexToLabel(tid),
+            name: meta.name || hexToLabel(tid),
+            image: rewriteImg(meta.image),
+            traits: traitsOf(meta),
+          };
+        }
+      }
+      if (next.length === remaining.length) break; // no progress — stop paying
+      remaining = next;
+    }
+  }
 
   // Facets, ordered by how often the trait appears then alphabetically,
   // so the sidebar leads with the traits that actually divide the set.
@@ -1085,21 +1169,33 @@ let homeBuilding = null;
 async function buildHome() {
   return mapPool(registry.collections.slice(), 6, async (c) => {
     const info = await collectionInfo(c.address).catch(() => ({ address: c.address }));
-    const orders = await collectionOrders(c.address).catch(() => []);
-    const floor = orders.length ? orders.reduce((m, o) => BigInt(o.price) < m ? BigInt(o.price) : m, BigInt(orders[0].price)) : null;
+    /* A FAILED order read is not an empty order book. Zeros written
+       during one bad minute made every collection say "0 listed" until
+       someone asked why — reuse the previous snapshot's numbers when
+       the read errs, real zeros only when the chain really says so. */
+    const orders = await collectionOrders(c.address).catch(() => null);
+    const prevRow = orders === null && homeSnap
+      ? homeSnap.collections.find((r) => r.address === c.address) : null;
+    const floor = orders && orders.length
+      ? orders.reduce((m, o) => BigInt(o.price) < m ? BigInt(o.price) : m, BigInt(orders[0].price)) : null;
     // No cover chosen? Borrow one from the collection itself — in the
     // background, so an index build never holds up this listing.
     if (!c.image) deriveCover(c.address).catch(() => {});
     return {
       ...c, ...info,
-      listed: orders.length,
-      floor: floor === null ? null : floor.toString(),
+      listed: orders === null ? (prevRow?.listed ?? 0) : orders.length,
+      floor: orders === null ? (prevRow?.floor ?? null) : (floor === null ? null : floor.toString()),
     };
   });
 }
 
+let homeBuildingAt = 0;
 function refreshHome({ maxAgeMs = 15000 } = {}) {
   if (homeSnap && Date.now() - homeSnap.at < maxAgeMs) return Promise.resolve(homeSnap);
+  /* A build stuck past any sane RPC budget is abandoned, not awaited —
+     the provider timeout should make this unreachable, but a frozen
+     home page must have no second way to happen. */
+  if (homeBuilding && Date.now() - homeBuildingAt > 90000) homeBuilding = null;
   if (homeBuilding) {
     /* A FORCED refresh must not coalesce into a build that started
        before the thing it was forced for (a collection added mid-build
@@ -1108,15 +1204,17 @@ function refreshHome({ maxAgeMs = 15000 } = {}) {
       ? homeBuilding.then(() => refreshHome({ maxAgeMs: 1 }), () => refreshHome({ maxAgeMs: 1 }))
       : homeBuilding;
   }
-  homeBuilding = (async () => {
+  homeBuildingAt = Date.now();
+  const run = (async () => {
     try {
       const collections = await buildHome();
       homeSnap = { at: Date.now(), collections };
       saveJson(HOME_FILE, homeSnap);
       return homeSnap;
-    } finally { homeBuilding = null; }
+    } finally { if (homeBuilding === run) homeBuilding = null; }
   })();
-  return homeBuilding;
+  homeBuilding = run;
+  return run;
 }
 setInterval(() => refreshHome({ maxAgeMs: 45000 }).catch(() => {}), 60000).unref();
 

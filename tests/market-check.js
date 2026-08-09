@@ -103,6 +103,19 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
   /* ---- sponsor gates, one broken rule per case ---- */
   const user = newSigner();
   const provider = new Provider(['https://api.koinos.io']);
+  /* The public RPC flakes in stretches — garbage JSON, timeouts — and
+     any single un-retried read voids the whole suite. Retry every call
+     the harness makes, in one place. */
+  const rawCall = provider.call.bind(provider);
+  provider.call = async (method, params) => {
+    for (let i = 0; ; i++) {
+      try { return await rawCall(method, params); }
+      catch (e) {
+        if (i >= 5) throw e;
+        await sleep(3000 * (i + 1));
+      }
+    }
+  };
   const marketAbi = JSON.parse(fs.readFileSync(path.join(ROOT, 'server-abi', 'market-abi.json'), 'utf8'));
   const nftAbi = JSON.parse(fs.readFileSync(path.join(ROOT, 'server-abi', 'nft-abi.json'), 'utf8'));
   for (const abi of [marketAbi, nftAbi]) {
@@ -136,8 +149,8 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
     for (let i = 0; ; i++) {
       try { await tx.prepare(); break; }
       catch (e) {
-        if (i >= 3) throw e;
-        await sleep(2000 * (i + 1));
+        if (i >= 5) throw e;
+        await sleep(3000 * (i + 1));
       }
     }
     if (sign) await tx.sign();
