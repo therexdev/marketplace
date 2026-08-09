@@ -765,6 +765,12 @@ function rebuildIndex(addr) {
 async function buildCollectionIndex(addr) {
   const c = nftC(addr);
   const ids = [];
+  /* Legacy enumeration already asks owner_of for every serial — KEEP
+     the answers. "My items" needs them: Kollection-era contracts have
+     no get_tokens_by_owner, so the index is the only affordable way to
+     know what a wallet holds there. Owners go stale between rebuilds;
+     the owned endpoint re-verifies its matches live. */
+  const ownerAt = new Map();
   let start = '';
   let partial = false;
   /* An RPC having a bad minute must not masquerade as an empty
@@ -828,8 +834,11 @@ async function buildCollectionIndex(addr) {
       for (let at = 0; at <= cap && ids.length < supply; at += 64) {
         const chunk = Array.from({ length: Math.min(64, cap - at + 1) }, (_, i) => asHex(String(at + i)));
         const hits = await mapPool(chunk, META_CONCURRENCY, async (tid) => {
-          try { return (await c.functions.owner_of({ token_id: tid })).result?.value ? tid : null; }
-          catch (_) { enumErrors++; return null; }
+          try {
+            const owner = (await c.functions.owner_of({ token_id: tid })).result?.value;
+            if (owner) ownerAt.set(tid, owner);
+            return owner ? tid : null;
+          } catch (_) { enumErrors++; return null; }
         });
         ids.push(...hits.filter(Boolean));
         if (at + 64 > 240 && !ids.length) break;
@@ -863,13 +872,17 @@ async function buildCollectionIndex(addr) {
     const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
     const meta = giveUp ? null : await tokenMeta(addr, tid).catch(() => null);
     if (meta) metaMisses = 0; else metaMisses += 1;
-    if (!meta && prev.has(tid)) return prev.get(tid);
+    if (!meta && prev.has(tid)) {
+      const old = prev.get(tid);
+      return { ...old, owner: ownerAt.get(tid) ?? old.owner };
+    }
     if (!meta) flaked.push(tid);
     return {
       tokenId: tid, label: hexToLabel(tid),
       name: meta?.name || hexToLabel(tid),
       image: rewriteImg(meta?.image),
       traits: traitsOf(meta),
+      owner: ownerAt.get(tid),
     };
   })).filter(Boolean);
 
@@ -902,6 +915,7 @@ async function buildCollectionIndex(addr) {
             name: meta.name || hexToLabel(tid),
             image: rewriteImg(meta.image),
             traits: traitsOf(meta),
+            owner: ownerAt.get(tid),
           };
         }
       }
@@ -2008,9 +2022,31 @@ const api = {
     const out = [];
     for (const c of registry.collections) {
       try {
-        const { result } = await cached(`owned:${c.address}:${addr}`, 20000,
-          async () => nftC(c.address).functions.get_tokens_by_owner({ owner: addr, limit: 100 }));
-        const ids = result?.token_ids || [];
+        let ids = [];
+        try {
+          const { result } = await cached(`owned:${c.address}:${addr}`, 20000,
+            async () => nftC(c.address).functions.get_tokens_by_owner({ owner: addr, limit: 100 }));
+          ids = result?.token_ids || [];
+        } catch (_) {
+          /* Kollection-era contracts have no get_tokens_by_owner — a
+             wallet's Crew pieces were simply invisible here. The index
+             captured each token's owner during its probe; trust it as a
+             CANDIDATE list and re-verify live, so a stale index can
+             only delay a listing, never invent one. Acquisitions newer
+             than the last rebuild appear after the next one. */
+          const peek = indexPeek(c.address);
+          if (!peek) { queueRebuild(c.address); continue; }
+          const mine = (peek.value.tokens || []).filter((t) => t.owner === addr);
+          const verified = await cached(`owned-legacy:${c.address}:${addr}`, 30000, async () =>
+            mapPool(mine, META_CONCURRENCY, async (t) => {
+              /* Only a SUCCESSFUL read naming someone else evicts a
+                 token — a flaked verify must not hide what the index
+                 verified at build time. */
+              try { return (await nftC(c.address).functions.owner_of({ token_id: t.tokenId })).result?.value === addr ? t.tokenId : null; }
+              catch (_) { return t.tokenId; }
+            }));
+          ids = (verified || []).filter(Boolean);
+        }
         if (!ids.length) continue;
         const orders = await collectionOrders(c.address).catch(() => []);
         const listed = new Map(orders.map(o => [o.tokenId, o]));
