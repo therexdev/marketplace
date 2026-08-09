@@ -432,7 +432,7 @@ async function fetchArt(src) {
     if (meta && fs.existsSync(file)) return { file, type: meta.type };
   }
   const failedAt = imgDead.get(key);
-  if (failedAt && Date.now() - failedAt < 600000) return null;
+  if (failedAt && Date.now() - failedAt < 120000) return null;
   if (imgBusy.has(key)) return imgBusy.get(key);
   const run = (async () => {
     /* A cold grid must not open one upstream connection per tile. */
@@ -478,7 +478,15 @@ async function serveArt(req, res, src, cacheSeconds) {
   const tag = `"${imgKey(src)}"`;
   if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
   const got = await fetchArt(src).catch(() => null);
-  if (!got) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
+  if (!got) {
+    /* We could not produce the bytes — a gateway flaking, or this url
+       resting in the negative cache after a failed burst. Hand the
+       browser the SOURCE url instead of a broken tile: a different
+       network path that often succeeds, and at worst exactly the
+       direct load every page did before the cache existed. */
+    res.writeHead(302, { 'Location': src, 'Cache-Control': 'no-store' });
+    return res.end();
+  }
   res.writeHead(200, {
     'Content-Type': got.type || 'application/octet-stream',
     'Cache-Control': `public, max-age=${cacheSeconds}`,
@@ -2476,8 +2484,22 @@ server.listen(CFG.PORT, () => {
   setTimeout(() => {
     (async () => {
       await refreshHome({ maxAgeMs: 0 }).catch(() => {});
+      /* Art too — covers first (the home page IS covers), then the
+         first grid page of every collection. Left to the first
+         visitors, this burst hits the gateways all at once, gets
+         rate-limited, and paints broken tiles; done here it is six
+         fetches at a time into the disk cache, once per DATA_DIR ever. */
       for (const c of registry.collections.slice()) {
-        try { await collectionIndex(c.address); } catch (_) {}
+        const src = rewriteImg(c.image);
+        if (src) fetchArt(src).catch(() => {});
+      }
+      for (const c of registry.collections.slice()) {
+        try {
+          const idx = await collectionIndex(c.address);
+          for (const t of (idx.tokens || []).slice(0, 24)) {
+            if (t.image) await fetchArt(t.image).catch(() => {});
+          }
+        } catch (_) {}
       }
     })().catch(() => {});
   }, 8000);
