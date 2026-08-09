@@ -450,6 +450,20 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
       try { await art.arrayBuffer(); } catch (_) {}
     }
 
+    /* Importing art the internet lost: past the admin key only, bytes
+       must BE an image, and the filename must be one the collection's
+       own metadata names — the caller never chooses a url. */
+    const fakePng = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.from('tiny')]);
+    let imp = await fetch(`http://127.0.0.1:${PORT}/api/art?collection=${MATA}&file=x.png`,
+      { method: 'POST', body: fakePng });
+    check('importing lost art demands the admin key', imp.status === 403, `status=${imp.status}`);
+    imp = await fetch(`http://127.0.0.1:${PORT}/api/art?key=test-admin-key&collection=${MATA}&file=x.png`,
+      { method: 'POST', body: Buffer.from('not an image at all') });
+    check('…and refuses bytes that are not an image', imp.status === 400, `status=${imp.status}`);
+    imp = await fetch(`http://127.0.0.1:${PORT}/api/art?key=test-admin-key&collection=${MATA}&file=no-such-art.png`,
+      { method: 'POST', body: fakePng });
+    check('…and refuses a filename no token in the metadata names', imp.status === 404, `status=${imp.status}`);
+
     // Registered by mistake? The admin key takes it back out — nobody else.
     let del = await api(`/api/collections/${CREW}`, {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },

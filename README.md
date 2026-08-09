@@ -171,6 +171,17 @@ Nobody waits on the chain or on IPFS anymore:
   covers stopped "sometimes not showing": one flaky gateway used to be
   one broken `<img>`; now it is at worst one slow *first* view.
 
+When a collection's metadata still resolves but its image host has died
+outright (a deleted bucket, an unpinned CID), the operator can restore
+the art from local files: `POST /api/art?key=…&collection=…&file=Name.png`
+with the raw image as the body. The filename is matched against the
+image urls in the collection's own metadata — the caller can only fill
+in bytes for a url the chain already names, never choose a target — and
+the result is stored **pinned**, exempt from the cache sweep: the site
+becomes the art's archive, not just its cache. `tools/seed-art.js`
+walks a directory of files and imports a whole collection in one run
+(`--register` also adds it to the registry afterwards).
+
 ### Trade history
 
 Every listing, cancellation and sale is already on chain: the contract emits

@@ -513,9 +513,21 @@ async function serveCoverArt(req, res, addr) {
   return serveArt(req, res, rewriteImg(row?.image), 3600);
 }
 
+/* Art whose ONLY living copy is this cache — imported by the operator
+   after the original host died — is not cache at all, it is the archive.
+   Pinned entries are written by /api/art and never swept. */
+function pinArt(src, buf, type) {
+  const key = imgKey(src);
+  const file = path.join(IMG_DIR, key);
+  fs.writeFileSync(file, buf);
+  saveJson(file + '.json', { type, src, size: buf.length, at: Date.now(), pinned: true });
+  imgDead.delete(key);
+  return key;
+}
+
 /* The cache is append-only in the happy path; keep it from appending
-   forever. Oldest art goes first, and anything still wanted comes back
-   on its next view. */
+   forever. Oldest art goes first — pinned archive entries never —
+   and anything still wanted comes back on its next view. */
 function sweepImgCache() {
   try {
     const entries = fs.readdirSync(IMG_DIR)
@@ -524,6 +536,7 @@ function sweepImgCache() {
     let total = entries.reduce((a, e) => a + e.size, 0);
     if (total <= IMG_DIR_MAX) return;
     for (const e of entries.sort((a, b) => a.at - b.at)) {
+      if (loadJson(path.join(IMG_DIR, e.f + '.json'), {}).pinned) continue;
       try { fs.unlinkSync(path.join(IMG_DIR, e.f)); fs.unlinkSync(path.join(IMG_DIR, e.f + '.json')); } catch (_) {}
       total -= e.size;
       if (total <= IMG_DIR_MAX * 0.8) break;
@@ -694,11 +707,16 @@ async function buildCollectionIndex(addr) {
      per token. After eight straight misses with no working path ever
      found, the rest of the walk renders from labels alone — and gets
      another chance on the next rebuild. */
+  /* A rebuild on a day the metadata host sulks must never know LESS
+     than the index it replaces — pinned art, names and traits all ride
+     on these rows. A miss falls back to the previous index's row. */
+  const prev = new Map((indexPeek(addr)?.value?.tokens || []).map((t) => [t.tokenId, t]));
   let metaMisses = 0;
   const tokens = (await mapPool(capped, META_CONCURRENCY, async (tid) => {
     const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
     const meta = giveUp ? null : await tokenMeta(addr, tid).catch(() => null);
     if (meta) metaMisses = 0; else metaMisses += 1;
+    if (!meta && prev.has(tid)) return prev.get(tid);
     return {
       tokenId: tid, label: hexToLabel(tid),
       name: meta?.name || hexToLabel(tid),
@@ -2341,6 +2359,43 @@ const api = {
     json(res, 200, { ok: true, tx: txId, collection, tokenId });
   },
 
+  /** Restore art the internet lost. When a collection's metadata still
+      resolves but its image host died (a deleted bucket, an unpinned
+      CID), the operator can import the original files: each upload is
+      matched BY FILENAME against the image urls in the collection's own
+      metadata — the client never says where art "should" come from, it
+      can only fill in bytes for a url the chain already names — and the
+      bytes are stored pinned, exempt from the cache sweep. Admin-only:
+      whoever holds the key is vouching these bytes are the real art. */
+  async art(req, res, q) {
+    if (req.method !== 'POST') return json(res, 405, { error: 'POST only' });
+    if (!CFG.ADMIN_KEY || q.get('key') !== CFG.ADMIN_KEY) {
+      return json(res, 403, { error: 'the admin key opens this door' });
+    }
+    const addr = String(q.get('collection') || '');
+    const file = decodeURIComponent(String(q.get('file') || '')).slice(0, 200).toLowerCase();
+    if (!isAddr(addr)) return json(res, 400, { error: 'A collection address is required' });
+    if (!file) return json(res, 400, { error: 'Pass ?file=<name.ext> as it appears in the metadata image url' });
+    const buf = await readRaw(req, IMG_FILE_MAX);
+    if (buf === 'OVERSIZE') return json(res, 413, { error: `Art larger than ${Math.round(IMG_FILE_MAX / 1048576)}MB` });
+    if (!buf || !buf.length) return json(res, 400, { error: 'The upload did not arrive whole — try again' });
+    const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
+    if (!sniffed) return json(res, 400, { error: 'That file is not a PNG, JPEG, GIF, WebP or SVG image' });
+    const idx = await collectionIndex(addr).catch(() => null);
+    if (!idx) return json(res, 400, { error: 'That collection cannot be indexed' });
+    const matches = (idx.tokens || []).filter((t) => {
+      const base = decodeURIComponent(String(t.image || '').split('/').pop() || '').toLowerCase();
+      return base && base === file;
+    });
+    if (!matches.length) return json(res, 404, { error: `No token in this collection names its art ${file}` });
+    const sources = [...new Set(matches.map((t) => t.image))];
+    for (const src of sources) pinArt(src, buf, sniffed[1]);
+    json(res, 200, {
+      ok: true, pinned: sources.length, bytes: buf.length,
+      tokens: matches.slice(0, 20).map((t) => ({ tokenId: t.tokenId, label: t.label, name: t.name })),
+    });
+  },
+
   /** Artwork, either uploaded here or linked from anywhere. Uploads are
       content-addressed, so the same picture twice costs one file. */
   async upload(req, res) {
@@ -2401,6 +2456,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/mint') return await api.mint(req, res);
     if (p === '/api/mint-batch') return await api.mintBatch(req, res);
     if (p === '/api/upload') return await api.upload(req, res);
+    if (p === '/api/art') return await api.art(req, res, url.searchParams);
     if ((m = /^\/u\/([a-f0-9]{8,64}\.(?:png|jpg|gif|webp))$/.exec(p))) return serveUpload(res, m[1]);
     if ((m = /^\/img\/c\/([1-9A-HJ-NP-Za-km-z]{25,35})$/.exec(p))) return await serveCoverArt(req, res, m[1]);
     if ((m = /^\/img\/t\/([1-9A-HJ-NP-Za-km-z]{25,35})\/(0x[0-9a-fA-F]{2,128})$/.exec(p))) return await serveTokenArt(req, res, m[1], m[2]);
