@@ -654,7 +654,10 @@ setInterval(sweepImgCache, 6 * 3600000).unref();
    response says so instead of quietly pretending the index is complete. */
 
 const INDEX_MAX_TOKENS = parseInt(process.env.INDEX_MAX_TOKENS || '1500', 10);
-const INDEX_TTL_MS = 600000;
+/* Names, traits and art urls change rarely; listings freshness comes
+   from the order book, not from here. Half an hour keeps rebuild churn
+   from starving the queue that broken collections wait in. */
+const INDEX_TTL_MS = 1800000;
 const META_CONCURRENCY = 8;
 
 async function mapPool(items, size, fn) {
@@ -720,7 +723,10 @@ const idxQueue = [];
 let idxWorkers = 0;
 function queueRebuild(addr) {
   if (idxBuilding.has(addr) || idxQueue.includes(addr)) return;
-  idxQueue.push(addr);
+  /* A collection with NOTHING to show outranks a routine refresh of a
+     healthy one — a storm recovery must not wait behind polish. */
+  const broken = !(indexPeek(addr)?.value?.tokens || []).length;
+  if (broken) idxQueue.unshift(addr); else idxQueue.push(addr);
   /* Two workers: one storm-recovery pass over twenty collections took
      the better part of an hour single-file, which reads as "broken"
      from outside. Two is still gentle on the RPC. */
@@ -876,10 +882,16 @@ async function buildCollectionIndex(addr) {
      times). */
   const anyLife = tokens.some((t) => t.image || Object.keys(t.traits).length) || metaPathHints.has(addr);
   if (anyLife) {
+    /* Bounded in TIME, not just count: four hundred stragglers against
+       a struggling host once held a queue worker for twenty minutes
+       while broken collections waited behind the polish. A minute of
+       retries per build; the next rebuild picks up where this stopped. */
+    const retryDeadline = Date.now() + 60000;
     let remaining = flaked.slice(0, 400);
-    for (let round = 0; round < 3 && remaining.length; round++) {
+    for (let round = 0; round < 3 && remaining.length && Date.now() < retryDeadline; round++) {
       const next = [];
       for (const tid of remaining) {
+        if (Date.now() >= retryDeadline) { next.push(tid); continue; }
         caches.delete(`meta:${addr}:${tid}`); // the miss just cached — retry for real
         const meta = await tokenMeta(addr, tid).catch(() => null);
         if (!meta) { next.push(tid); continue; }
