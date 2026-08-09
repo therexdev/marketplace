@@ -717,17 +717,22 @@ async function collectionIndex(addr) {
    stale together (every restart) must refresh one at a time, not as
    nineteen simultaneous 1500-token walks against the same RPC. */
 const idxQueue = [];
-let idxWorker = null;
+let idxWorkers = 0;
 function queueRebuild(addr) {
   if (idxBuilding.has(addr) || idxQueue.includes(addr)) return;
   idxQueue.push(addr);
-  if (!idxWorker) {
-    idxWorker = (async () => {
-      while (idxQueue.length) {
-        const a = idxQueue.shift();
-        try { await rebuildIndex(a); } catch (_) {}
-      }
-      idxWorker = null;
+  /* Two workers: one storm-recovery pass over twenty collections took
+     the better part of an hour single-file, which reads as "broken"
+     from outside. Two is still gentle on the RPC. */
+  while (idxWorkers < 2 && idxQueue.length > idxWorkers) {
+    idxWorkers++;
+    (async () => {
+      try {
+        while (idxQueue.length) {
+          const a = idxQueue.shift();
+          try { await rebuildIndex(a); } catch (_) {}
+        }
+      } finally { idxWorkers--; }
     })();
   }
 }
@@ -763,26 +768,40 @@ async function buildCollectionIndex(addr) {
      and a build that only erred THROWS instead of caching. */
   let enumErrors = 0;
   const transientErr = (e) => /timeout|invalid json|deadline|ECONN|fetch failed/i.test(String((e && e.message) || e));
-  for (let page = 0; page < 200; page++) {
-    const args = { limit: 100, descending: false };
-    if (start) args.start = start;
-    let batch = [];
-    try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
-    catch (e) {
-      /* Page 0 failing TRANSIENTLY is weather, and mistaking weather
-         for "this contract has no get_tokens" sends a KCS-2 collection
-         down the legacy decimal probe to a cleanly-cached empty index.
-         Refuse to guess: fail the build, the queue retries it. A page-0
-         error that is NOT transient really is a Kollection-era
-         contract; mid-walk failures keep what they got. */
-      if (page === 0 && transientErr(e)) throw new Error('get_tokens unreachable — retry, do not misdiagnose');
-      if (page > 0) enumErrors++;
-      break;
+  /* Which dialect is this contract? The question is only ambiguous
+     while the answer has never been learned: a page-zero read that
+     fails with TRANSPORT garbage looks the same for a flaky KCS-2 and
+     a Kollection-era contract behind a flaky edge — and one storm
+     froze every legacy collection in a retry loop re-asking it. So the
+     index REMEMBERS the dialect once learned, rebuilds skip the
+     ambiguous test entirely, and only a never-before-seen collection
+     has to learn it — with a few patient attempts before giving up. */
+  let scheme = indexPeek(addr)?.value?.scheme || null;
+  if (scheme !== 'legacy') {
+    pages:
+    for (let page = 0; page < 200; page++) {
+      const args = { limit: 100, descending: false };
+      if (start) args.start = start;
+      let batch = null;
+      for (let attempt = 0; batch === null; attempt++) {
+        try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
+        catch (e) {
+          if (page === 0 && transientErr(e) && scheme !== 'kcs2' && attempt < 2) {
+            await new Promise((r) => setTimeout(r, 2500)); // ambiguity is worth a little patience
+            continue;
+          }
+          if (page === 0 && transientErr(e)) throw new Error('get_tokens unreachable — retry, do not misdiagnose');
+          if (page === 0) { scheme = 'legacy'; break pages; } // clean "no such entry point"
+          enumErrors++;
+          break pages;
+        }
+      }
+      scheme = 'kcs2';
+      ids.push(...batch);
+      if (batch.length < 100) break;
+      start = batch[batch.length - 1];
+      if (ids.length >= INDEX_MAX_TOKENS) { partial = true; break; }
     }
-    ids.push(...batch);
-    if (batch.length < 100) break;
-    start = batch[batch.length - 1];
-    if (ids.length >= INDEX_MAX_TOKENS) { partial = true; break; }
   }
   /* Kollection-era contracts have no get_tokens at all — their only
      enumeration is per-owner. Every one of them numbers its tokens with
@@ -809,7 +828,7 @@ async function buildCollectionIndex(addr) {
         ids.push(...hits.filter(Boolean));
         if (at + 64 > 240 && !ids.length) break;
       }
-      if (ids.length) partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
+      if (ids.length) { partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS; scheme = 'legacy'; }
     }
   }
 
@@ -900,7 +919,7 @@ async function buildCollectionIndex(addr) {
     .filter(f => f.values.length > 1 || f.total < tokens.length)
     .sort((a, b) => b.values.length - a.values.length || a.trait.localeCompare(b.trait));
 
-  return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length };
+  return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length, scheme };
 }
 
 /* ---------------- trade history ----------------
