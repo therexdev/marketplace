@@ -33,6 +33,11 @@ if (!SITE || !KEY || !ADDR || !DIR) {
   console.error('usage: node tools/seed-art.js --site https://… --key ADMIN_KEY --collection 1… --dir ./art [--register]');
   process.exit(1);
 }
+if (!fs.existsSync(DIR) || !fs.statSync(DIR).isDirectory()) {
+  console.error(`--dir points at a folder that does not exist: ${DIR}`);
+  console.error('Unzip the art somewhere first, then pass that folder\'s real path.');
+  process.exit(1);
+}
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i;
 const files = [];
