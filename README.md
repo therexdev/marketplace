@@ -150,6 +150,27 @@ and holds the index for ten minutes:
 Collections larger than `INDEX_MAX_TOKENS` are indexed to that depth and the
 response says `partial: true` rather than pretending to be complete.
 
+### Instant pages, and where the art really comes from
+
+Nobody waits on the chain or on IPFS anymore:
+
+* the **home page** answers from a snapshot at memory speed; a stale
+  snapshot refreshes *behind* the response it just gave (floors lag live
+  trading by a refresh — browsing is constant, buying re-checks on chain);
+* **collection indexes** are persisted to `DATA_DIR` and served however
+  old they are while one background worker rebuilds stale ones — a
+  restart begins warm, and the only cold walk left is the first sight of
+  a brand-new collection (boot pre-warms every registered one);
+* **art is served from here** (`/img/c/…` covers, `/img/t/…` tokens),
+  not from whichever IPFS gateway the visitor's browser can reach. The
+  server resolves the url from data it already trusts — the registry
+  row, the token's own metadata, never anything client-supplied — pulls
+  it once with gateway fallbacks and real patience, and keeps the bytes
+  on disk (12MB per artwork, 2GB total, swept oldest-first). Every load
+  after the first is a same-origin file with an ETag. This is also why
+  covers stopped "sometimes not showing": one flaky gateway used to be
+  one broken `<img>`; now it is at worst one slow *first* view.
+
 ### Trade history
 
 Every listing, cancellation and sale is already on chain: the contract emits

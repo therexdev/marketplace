@@ -438,7 +438,17 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
       if (!cover) await sleep(1500);
     }
     check('…and with no cover chosen, its newest loadable art fronts the collection',
-      /^https:\/\//.test(cover), `image=${cover.slice(0, 80)}`);
+      /^(\/img\/c\/|\/u\/|https:\/\/)/.test(cover), `image=${cover.slice(0, 80)}`);
+    if (cover.startsWith('/img/')) {
+      /* The page now hands out /img/ paths served from our own art
+         cache — prove the path delivers actual image bytes, which is
+         more than the old direct-gateway url ever promised. */
+      const art = await fetch(`http://127.0.0.1:${PORT}${cover}`);
+      check('…and the art cache serves those bytes itself',
+        art.ok && /^image\//.test(art.headers.get('content-type') || ''),
+        `status=${art.status} type=${art.headers.get('content-type')}`);
+      try { await art.arrayBuffer(); } catch (_) {}
+    }
 
     // Registered by mistake? The admin key takes it back out — nobody else.
     let del = await api(`/api/collections/${CREW}`, {

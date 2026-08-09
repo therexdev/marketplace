@@ -373,6 +373,158 @@ const rewriteImg = (u) => {
   return /^https:\/\//.test(u) ? u : null;
 };
 
+/* ---------------- the art cache ----------------
+
+   Art was the slow half of every page. The browser used to pull each
+   image straight from an IPFS gateway, so a grid of 24 tokens was 24
+   separate gambles on ipfs.io's mood — some covers never arrived at all,
+   which reads as "this marketplace is broken", not "a gateway is moody".
+
+   So the pages now hand the browser /img/... urls served from HERE.
+   The server resolves what to fetch from data it already trusts — the
+   registry's cover field, a token's own metadata — never from anything
+   client-supplied, so this stays shut as ever (the same rule the
+   metadata proxy has always had). The fetch gets the gateway fallbacks
+   and the patience one browser <img> tag cannot have, and the bytes are
+   kept on disk. Every load after the first is a same-origin file.  */
+
+const IMG_DIR = path.join(CFG.DATA_DIR, 'imgcache');
+fs.mkdirSync(IMG_DIR, { recursive: true });
+const IMG_FILE_MAX = 12 * 1048576;   // one artwork; beyond this it stays a placeholder
+const IMG_DIR_MAX = 2048 * 1048576;  // the whole cache; swept oldest-first past this
+
+const IMG_MAGIC = [
+  [Buffer.from([0x89, 0x50, 0x4e, 0x47]), 'image/png'],
+  [Buffer.from([0xff, 0xd8, 0xff]), 'image/jpeg'],
+  [Buffer.from('GIF8'), 'image/gif'],
+  [Buffer.from('RIFF'), 'image/webp'],
+  [Buffer.from('<svg'), 'image/svg+xml'],
+  [Buffer.from('<?xml'), 'image/svg+xml'],
+];
+
+/* Art uploaded through this site is already a local immutable file —
+   hand back its own path rather than proxying ourselves. Only when the
+   file really is HERE, though: metadata minted through ANOTHER
+   deployment of this code carries that deployment's /u/ url, and
+   claiming it locally would 404 a perfectly good remote image. */
+const localUpload = (u) => {
+  const m = /^(?:https?:\/\/[^/]+)?\/u\/([a-f0-9]{8,64}\.(?:png|jpg|gif|webp))$/.exec(String(u || ''));
+  if (!m) return null;
+  try { return fs.existsSync(path.join(UPLOAD_DIR, m[1])) ? '/u/' + m[1] : null; }
+  catch (_) { return null; }
+};
+const artUrl = (addr, tokenId, image) =>
+  !image ? null : localUpload(image) || `/img/t/${addr}/${tokenId}`;
+const coverUrl = (row) =>
+  !row || !row.image ? '' : localUpload(row.image) || `/img/c/${row.address}`;
+
+const imgKey = (src) => crypto.createHash('sha256').update(src).digest('hex');
+const imgDead = new Map();     // key -> when the last hunt failed (retried after 10 min)
+const imgBusy = new Map();     // key -> in-flight fetch, so a grid asks once
+let imgFetching = 0;           // upstream fetches in flight, across all keys
+
+/** Fetch one artwork into the disk cache. Returns {file, type} or null. */
+async function fetchArt(src) {
+  const key = imgKey(src);
+  const file = path.join(IMG_DIR, key);
+  if (fs.existsSync(file + '.json')) {
+    const meta = loadJson(file + '.json', null);
+    if (meta && fs.existsSync(file)) return { file, type: meta.type };
+  }
+  const failedAt = imgDead.get(key);
+  if (failedAt && Date.now() - failedAt < 600000) return null;
+  if (imgBusy.has(key)) return imgBusy.get(key);
+  const run = (async () => {
+    /* A cold grid must not open one upstream connection per tile. */
+    while (imgFetching >= 6) await new Promise((r) => setTimeout(r, 150));
+    imgFetching++;
+    try {
+      const tries = [...new Set([src, ...(ipfsRoots(src) || [])])];
+      for (const u of tries) {
+        try {
+          const r = await fetch(u, { signal: AbortSignal.timeout(12000) });
+          if (!r.ok) continue;
+          const chunks = [];
+          let size = 0, over = false;
+          for await (const chunk of r.body) {
+            size += chunk.length;
+            if (size > IMG_FILE_MAX) { over = true; break; }
+            chunks.push(chunk);
+          }
+          if (over) break; // the same bytes wait on every gateway — give up whole
+          const buf = Buffer.concat(chunks);
+          const claimed = r.headers.get('content-type') || '';
+          const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
+          if (!/^image\//.test(claimed) && !sniffed) continue;
+          const type = sniffed ? sniffed[1] : claimed.split(';')[0];
+          fs.writeFileSync(file, buf);
+          saveJson(file + '.json', { type, src, size: buf.length, at: Date.now() });
+          imgDead.delete(key);
+          return { file, type };
+        } catch (_) {}
+      }
+      imgDead.set(key, Date.now());
+      return null;
+    } finally { imgFetching--; imgBusy.delete(key); }
+  })();
+  imgBusy.set(key, run);
+  return run;
+}
+
+async function serveArt(req, res, src, cacheSeconds) {
+  if (!src) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
+  /* The etag IS the source url's hash: same source, same art. A cover
+     an admin re-points gets a new etag by construction. */
+  const tag = `"${imgKey(src)}"`;
+  if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
+  const got = await fetchArt(src).catch(() => null);
+  if (!got) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
+  res.writeHead(200, {
+    'Content-Type': got.type || 'application/octet-stream',
+    'Cache-Control': `public, max-age=${cacheSeconds}`,
+    'ETag': tag,
+  });
+  fs.createReadStream(got.file).pipe(res);
+}
+
+async function serveTokenArt(req, res, addr, tokenId) {
+  /* The persisted index already resolved this token's art url — no
+     chain round-trip. Metadata is only consulted for tokens the index
+     has never met. */
+  const peek = indexPeek(addr);
+  const known = peek && (peek.value.tokens || []).find((t) => t.tokenId === tokenId);
+  if (known && known.image) return serveArt(req, res, known.image, 86400);
+  // Unknown to the index, or indexed while its metadata was missing —
+  // ask the metadata directly rather than 404ing on a stale blank.
+  const meta = await tokenMeta(addr, tokenId).catch(() => null);
+  return serveArt(req, res, rewriteImg(meta?.image), 86400);
+}
+
+async function serveCoverArt(req, res, addr) {
+  const row = registry.collections.find((c) => c.address === addr);
+  return serveArt(req, res, rewriteImg(row?.image), 3600);
+}
+
+/* The cache is append-only in the happy path; keep it from appending
+   forever. Oldest art goes first, and anything still wanted comes back
+   on its next view. */
+function sweepImgCache() {
+  try {
+    const entries = fs.readdirSync(IMG_DIR)
+      .filter((f) => !f.endsWith('.json'))
+      .map((f) => { const s = fs.statSync(path.join(IMG_DIR, f)); return { f, size: s.size, at: s.mtimeMs }; });
+    let total = entries.reduce((a, e) => a + e.size, 0);
+    if (total <= IMG_DIR_MAX) return;
+    for (const e of entries.sort((a, b) => a.at - b.at)) {
+      try { fs.unlinkSync(path.join(IMG_DIR, e.f)); fs.unlinkSync(path.join(IMG_DIR, e.f + '.json')); } catch (_) {}
+      total -= e.size;
+      if (total <= IMG_DIR_MAX * 0.8) break;
+    }
+  } catch (_) {}
+}
+sweepImgCache();
+setInterval(sweepImgCache, 6 * 3600000).unref();
+
 /* ---------------- the collection index ----------------
 
    Filtering has to see the WHOLE collection: a sidebar built from the 24
@@ -415,94 +567,160 @@ function traitsOf(meta) {
   return t;
 }
 
+/* Indexes answer from memory or disk INSTANTLY, however old, and a
+   stale one quietly rebuilds in the background — a visitor never waits
+   out a 1500-token walk that some earlier visitor already paid for.
+   Disk persistence means a restart begins warm too; the only cold walk
+   left is the very first sight of a collection, and boot pre-warms the
+   registry so even that is usually already done. */
+const IDX_DIR = path.join(CFG.DATA_DIR, 'index');
+fs.mkdirSync(IDX_DIR, { recursive: true });
+const idxMem = new Map();      // addr -> {at, value}
+const idxBuilding = new Map(); // addr -> in-flight build
+
+/** The index we already have — memory, then disk — or null. Never builds. */
+function indexPeek(addr) {
+  let hit = idxMem.get(addr);
+  if (!hit) {
+    const disk = loadJson(path.join(IDX_DIR, addr + '.json'), null);
+    if (disk && disk.value) { hit = disk; idxMem.set(addr, hit); }
+  }
+  return hit || null;
+}
+
 async function collectionIndex(addr) {
-  return cached('index:' + addr, INDEX_TTL_MS, async () => {
-    const c = nftC(addr);
-    const ids = [];
-    let start = '';
-    let partial = false;
-    for (let page = 0; page < 200; page++) {
-      const args = { limit: 100, descending: false };
-      if (start) args.start = start;
-      let batch = [];
-      try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
-      catch (_) { break; }
-      ids.push(...batch);
-      if (batch.length < 100) break;
-      start = batch[batch.length - 1];
-      if (ids.length >= INDEX_MAX_TOKENS) { partial = true; break; }
-    }
-    /* Kollection-era contracts have no get_tokens at all — their only
-       enumeration is per-owner. Every one of them numbers its tokens with
-       plain decimal strings, so when the walk finds nothing but the
-       supply says otherwise, probe serials against owner_of and keep
-       whichever ids exist. Sparse drops (Koinos Astronauts: 180 minted,
-       serials scattered up to ~1000) mint out of order, so "1" and "0"
-       both missing proves nothing — walk in chunks until the supply is
-       accounted for, and only give up on decimal ids after 240 straight
-       misses from the start, which is what "ids are names, not numbers"
-       (KAP domains) looks like. */
-    if (!ids.length) {
-      const info = await collectionInfo(addr).catch(() => ({}));
-      const supply = Math.min(Number(info.totalSupply || 0), INDEX_MAX_TOKENS);
-      if (supply > 0) {
-        const asHex = (s) => '0x' + [...s].map((ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-        const cap = Math.min(Math.max(supply * 6, 60), 4 * INDEX_MAX_TOKENS);
-        for (let at = 0; at <= cap && ids.length < supply; at += 64) {
-          const chunk = Array.from({ length: Math.min(64, cap - at + 1) }, (_, i) => asHex(String(at + i)));
-          const hits = await mapPool(chunk, META_CONCURRENCY, async (tid) => {
-            try { return (await c.functions.owner_of({ token_id: tid })).result?.value ? tid : null; }
-            catch (_) { return null; }
-          });
-          ids.push(...hits.filter(Boolean));
-          if (at + 64 > 240 && !ids.length) break;
-        }
-        if (ids.length) partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
+  const hit = indexPeek(addr);
+  if (hit) {
+    if (Date.now() - hit.at > INDEX_TTL_MS) queueRebuild(addr);
+    return hit.value;
+  }
+  return rebuildIndex(addr);
+}
+
+/* Background rebuilds go through ONE worker: nineteen collections going
+   stale together (every restart) must refresh one at a time, not as
+   nineteen simultaneous 1500-token walks against the same RPC. */
+const idxQueue = [];
+let idxWorker = null;
+function queueRebuild(addr) {
+  if (idxBuilding.has(addr) || idxQueue.includes(addr)) return;
+  idxQueue.push(addr);
+  if (!idxWorker) {
+    idxWorker = (async () => {
+      while (idxQueue.length) {
+        const a = idxQueue.shift();
+        try { await rebuildIndex(a); } catch (_) {}
       }
-    }
-    const capped = ids.slice(0, INDEX_MAX_TOKENS);
+      idxWorker = null;
+    })();
+  }
+}
 
-    /* A collection whose metadata host died (nftstorage.link took whole
-       drops with it) would otherwise spend half an hour timing out once
-       per token. After eight straight misses with no working path ever
-       found, the rest of the walk renders from labels alone — and gets
-       another chance on the next rebuild. */
-    let metaMisses = 0;
-    const tokens = (await mapPool(capped, META_CONCURRENCY, async (tid) => {
-      const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
-      const meta = giveUp ? null : await tokenMeta(addr, tid).catch(() => null);
-      if (meta) metaMisses = 0; else metaMisses += 1;
-      return {
-        tokenId: tid, label: hexToLabel(tid),
-        name: meta?.name || hexToLabel(tid),
-        image: rewriteImg(meta?.image),
-        traits: traitsOf(meta),
-      };
-    })).filter(Boolean);
-
-    // Facets, ordered by how often the trait appears then alphabetically,
-    // so the sidebar leads with the traits that actually divide the set.
-    const byTrait = new Map();
-    for (const t of tokens) {
-      for (const [k, v] of Object.entries(t.traits)) {
-        if (!byTrait.has(k)) byTrait.set(k, new Map());
-        const vals = byTrait.get(k);
-        vals.set(v, (vals.get(v) || 0) + 1);
+function rebuildIndex(addr) {
+  if (idxBuilding.has(addr)) return idxBuilding.get(addr);
+  const run = (async () => {
+    try {
+      const value = await buildCollectionIndex(addr);
+      const rec = { at: Date.now(), value };
+      idxMem.set(addr, rec);
+      if (idxMem.size > 200) {
+        const oldest = [...idxMem.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+        if (oldest) idxMem.delete(oldest[0]);
       }
-    }
-    const facets = [...byTrait.entries()]
-      .map(([trait, vals]) => ({
-        trait,
-        total: [...vals.values()].reduce((a, b) => a + b, 0),
-        values: [...vals.entries()]
-          .map(([value, count]) => ({ value, count }))
-          .sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value), undefined, { numeric: true })),
-      }))
-      .filter(f => f.values.length > 1 || f.total < tokens.length)
-      .sort((a, b) => b.values.length - a.values.length || a.trait.localeCompare(b.trait));
+      saveJson(path.join(IDX_DIR, addr + '.json'), rec);
+      return value;
+    } finally { idxBuilding.delete(addr); }
+  })();
+  idxBuilding.set(addr, run);
+  return run;
+}
 
-    return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length };
-  });
+async function buildCollectionIndex(addr) {
+  const c = nftC(addr);
+  const ids = [];
+  let start = '';
+  let partial = false;
+  for (let page = 0; page < 200; page++) {
+    const args = { limit: 100, descending: false };
+    if (start) args.start = start;
+    let batch = [];
+    try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
+    catch (_) { break; }
+    ids.push(...batch);
+    if (batch.length < 100) break;
+    start = batch[batch.length - 1];
+    if (ids.length >= INDEX_MAX_TOKENS) { partial = true; break; }
+  }
+  /* Kollection-era contracts have no get_tokens at all — their only
+     enumeration is per-owner. Every one of them numbers its tokens with
+     plain decimal strings, so when the walk finds nothing but the
+     supply says otherwise, probe serials against owner_of and keep
+     whichever ids exist. Sparse drops (Koinos Astronauts: 180 minted,
+     serials scattered up to ~1000) mint out of order, so "1" and "0"
+     both missing proves nothing — walk in chunks until the supply is
+     accounted for, and only give up on decimal ids after 240 straight
+     misses from the start, which is what "ids are names, not numbers"
+     (KAP domains) looks like. */
+  if (!ids.length) {
+    const info = await collectionInfo(addr).catch(() => ({}));
+    const supply = Math.min(Number(info.totalSupply || 0), INDEX_MAX_TOKENS);
+    if (supply > 0) {
+      const asHex = (s) => '0x' + [...s].map((ch) => ch.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+      const cap = Math.min(Math.max(supply * 6, 60), 4 * INDEX_MAX_TOKENS);
+      for (let at = 0; at <= cap && ids.length < supply; at += 64) {
+        const chunk = Array.from({ length: Math.min(64, cap - at + 1) }, (_, i) => asHex(String(at + i)));
+        const hits = await mapPool(chunk, META_CONCURRENCY, async (tid) => {
+          try { return (await c.functions.owner_of({ token_id: tid })).result?.value ? tid : null; }
+          catch (_) { return null; }
+        });
+        ids.push(...hits.filter(Boolean));
+        if (at + 64 > 240 && !ids.length) break;
+      }
+      if (ids.length) partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
+    }
+  }
+  const capped = ids.slice(0, INDEX_MAX_TOKENS);
+
+  /* A collection whose metadata host died (nftstorage.link took whole
+     drops with it) would otherwise spend half an hour timing out once
+     per token. After eight straight misses with no working path ever
+     found, the rest of the walk renders from labels alone — and gets
+     another chance on the next rebuild. */
+  let metaMisses = 0;
+  const tokens = (await mapPool(capped, META_CONCURRENCY, async (tid) => {
+    const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
+    const meta = giveUp ? null : await tokenMeta(addr, tid).catch(() => null);
+    if (meta) metaMisses = 0; else metaMisses += 1;
+    return {
+      tokenId: tid, label: hexToLabel(tid),
+      name: meta?.name || hexToLabel(tid),
+      image: rewriteImg(meta?.image),
+      traits: traitsOf(meta),
+    };
+  })).filter(Boolean);
+
+  // Facets, ordered by how often the trait appears then alphabetically,
+  // so the sidebar leads with the traits that actually divide the set.
+  const byTrait = new Map();
+  for (const t of tokens) {
+    for (const [k, v] of Object.entries(t.traits)) {
+      if (!byTrait.has(k)) byTrait.set(k, new Map());
+      const vals = byTrait.get(k);
+      vals.set(v, (vals.get(v) || 0) + 1);
+    }
+  }
+  const facets = [...byTrait.entries()]
+    .map(([trait, vals]) => ({
+      trait,
+      total: [...vals.values()].reduce((a, b) => a + b, 0),
+      values: [...vals.entries()]
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value), undefined, { numeric: true })),
+    }))
+    .filter(f => f.values.length > 1 || f.total < tokens.length)
+    .sort((a, b) => b.values.length - a.values.length || a.trait.localeCompare(b.trait));
+
+  return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length };
 }
 
 /* ---------------- trade history ----------------
@@ -748,11 +966,70 @@ function readRaw(req, max) {
     mint shows on its own token page (a direct read) while the collection
     page insists it does not exist — exactly the bug that shipped. */
 function forgetCollection(addr) {
-  caches.delete('index:' + addr);
+  idxMem.delete(addr);
+  try { fs.unlinkSync(path.join(IDX_DIR, addr + '.json')); } catch (_) {}
   caches.delete('info:' + addr);
   for (const k of [...caches.keys()]) {
     if (k.startsWith('owned:' + addr + ':')) caches.delete(k);
   }
+}
+
+/* ---------------- the home snapshot ----------------
+
+   The home page used to interrogate the chain about every collection —
+   serially — while the visitor watched a spinner. Now a snapshot of
+   that answer lives in memory and on disk, every request is served from
+   it at memory speed, and a stale snapshot refreshes BEHIND the
+   response it just gave. Floors lag live trading by a refresh, which is
+   the right trade: browsing is constant, buying re-checks on chain. */
+const HOME_FILE = path.join(CFG.DATA_DIR, 'home.json');
+let homeSnap = loadJson(HOME_FILE, null); // { at, collections }
+let homeBuilding = null;
+
+async function buildHome() {
+  return mapPool(registry.collections.slice(), 6, async (c) => {
+    const info = await collectionInfo(c.address).catch(() => ({ address: c.address }));
+    const orders = await collectionOrders(c.address).catch(() => []);
+    const floor = orders.length ? orders.reduce((m, o) => BigInt(o.price) < m ? BigInt(o.price) : m, BigInt(orders[0].price)) : null;
+    // No cover chosen? Borrow one from the collection itself — in the
+    // background, so an index build never holds up this listing.
+    if (!c.image) deriveCover(c.address).catch(() => {});
+    return {
+      ...c, ...info,
+      listed: orders.length,
+      floor: floor === null ? null : floor.toString(),
+    };
+  });
+}
+
+function refreshHome({ maxAgeMs = 15000 } = {}) {
+  if (homeSnap && Date.now() - homeSnap.at < maxAgeMs) return Promise.resolve(homeSnap);
+  if (homeBuilding) {
+    /* A FORCED refresh must not coalesce into a build that started
+       before the thing it was forced for (a collection added mid-build
+       would stay invisible until the next interval). Chain behind it. */
+    return maxAgeMs === 0
+      ? homeBuilding.then(() => refreshHome({ maxAgeMs: 1 }), () => refreshHome({ maxAgeMs: 1 }))
+      : homeBuilding;
+  }
+  homeBuilding = (async () => {
+    try {
+      const collections = await buildHome();
+      homeSnap = { at: Date.now(), collections };
+      saveJson(HOME_FILE, homeSnap);
+      return homeSnap;
+    } finally { homeBuilding = null; }
+  })();
+  return homeBuilding;
+}
+setInterval(() => refreshHome({ maxAgeMs: 45000 }).catch(() => {}), 60000).unref();
+
+/* Covers resolve against the LIVE registry row at serve time, so a
+   cover derived a moment ago shows without waiting for the next
+   snapshot build. */
+function homeRow(snapRow) {
+  const reg = registry.collections.find((r) => r.address === snapRow.address);
+  return { ...snapRow, image: coverUrl(reg || snapRow) };
 }
 
 const marketCfg = async () => {
@@ -1276,30 +1553,25 @@ const api = {
       if (registry.collections.some(c => c.address === addr)) return json(res, 400, { error: 'Already registered' });
       const info = await collectionInfo(addr);
       if (!info.name && !info.symbol) return json(res, 400, { error: 'That address does not answer as a KCS-2 collection' });
-      registry.collections.push({
+      const row = {
         address: addr, name: String(body.name || info.name || addr),
         description: String(body.description || info.description || '').slice(0, 1000),
         image: safeImage(body.image) || '', featured: admin && !!body.featured,
         addedBy: isAddr(body.by) ? body.by : null, addedAt: Date.now(),
-      });
+      };
+      registry.collections.push(row);
       saveJson(REGISTRY_FILE, registry);
+      // Visible on the home page immediately, exact numbers a refresh later.
+      if (homeSnap) homeSnap.collections.push({ ...row, ...info, listed: 0, floor: null });
+      refreshHome({ maxAgeMs: 0 }).catch(() => {});
+      queueRebuild(addr);
       return json(res, 200, { ok: true, collection: info });
     }
-    const out = [];
-    for (const c of registry.collections) {
-      const info = await collectionInfo(c.address).catch(() => ({ address: c.address }));
-      const orders = await collectionOrders(c.address).catch(() => []);
-      const floor = orders.length ? orders.reduce((m, o) => BigInt(o.price) < m ? BigInt(o.price) : m, BigInt(orders[0].price)) : null;
-      // No cover chosen? Borrow one from the collection itself — in the
-      // background, so an index build never holds up this listing.
-      if (!c.image) deriveCover(c.address).catch(() => {});
-      out.push({
-        ...c, ...info,
-        listed: orders.length,
-        floor: floor === null ? null : floor.toString(),
-      });
-    }
-    json(res, 200, { collections: out });
+    /* Answer from the snapshot at memory speed, however old it is; a
+       stale one refreshes behind this response, not in front of it. */
+    if (!homeSnap) await refreshHome().catch(() => {});
+    else refreshHome().catch(() => {});
+    json(res, 200, { collections: (homeSnap ? homeSnap.collections : []).map(homeRow) });
   },
 
   async collection(req, res, addr) {
@@ -1321,13 +1593,14 @@ const api = {
       registry.collections.splice(at, 1);
       saveJson(REGISTRY_FILE, registry);
       forgetCollection(addr);
+      if (homeSnap) homeSnap.collections = homeSnap.collections.filter((c) => c.address !== addr);
       return json(res, 200, { ok: true, removed: addr });
     }
     const reg = registry.collections.find(c => c.address === addr) || null;
     const info = await collectionInfo(addr);
     // A blinked RPC read of the order book must not take the page down.
     const orders = await collectionOrders(addr).catch(() => []);
-    json(res, 200, { registered: !!reg, meta: reg, info, orders });
+    json(res, 200, { registered: !!reg, meta: reg ? { ...reg, image: coverUrl(reg) } : null, info, orders });
   },
 
   /** The browse grid, filtered and sorted across the WHOLE collection.
@@ -1407,7 +1680,7 @@ const api = {
 
     json(res, 200, {
       tokens: rows.slice(offset, offset + limit).map(t => ({
-        tokenId: t.tokenId, label: t.label, name: t.name, image: t.image, order: t.order,
+        tokenId: t.tokenId, label: t.label, name: t.name, image: artUrl(addr, t.tokenId, t.image), order: t.order,
       })),
       matched: rows.length,
       indexed: idx.total,
@@ -1443,20 +1716,24 @@ const api = {
   async token(req, res, addr, tokenId) {
     if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
     const c = nftC(addr);
-    let owner = null;
-    try { owner = (await c.functions.owner_of({ token_id: tokenId })).result?.value || null; } catch (_) {}
-    const meta = await tokenMeta(addr, tokenId).catch(() => null);
-    let order = null;
-    if (marketC) {
-      try {
-        const { result } = await marketC.functions.get_order({ collection: addr, token_id: tokenId });
-        if (result?.seller) order = {
-          seller: result.seller, price: result.price,
-          expires: result.expires || '0',
-          dead: Number(result.expires) !== 0 && Number(result.expires) < Date.now(),
-        };
-      } catch (_) {}
-    }
+    /* Four independent reads, one round-trip of wall clock — this is
+       the page a buyer sits on, and it reads live state on purpose. */
+    const [owner, meta, order] = await Promise.all([
+      c.functions.owner_of({ token_id: tokenId }).then((r) => r.result?.value || null, () => null),
+      tokenMeta(addr, tokenId).catch(() => null),
+      (async () => {
+        if (!marketC) return null;
+        try {
+          const { result } = await marketC.functions.get_order({ collection: addr, token_id: tokenId });
+          if (!result?.seller) return null;
+          return {
+            seller: result.seller, price: result.price,
+            expires: result.expires || '0',
+            dead: Number(result.expires) !== 0 && Number(result.expires) < Date.now(),
+          };
+        } catch (_) { return null; }
+      })(),
+    ]);
     let approved = false;
     if (CFG.MARKET_ADDR && owner) {
       try {
@@ -1471,7 +1748,7 @@ const api = {
     const info = await collectionInfo(addr);
     json(res, 200, {
       collection: info, tokenId, label: hexToLabel(tokenId), owner,
-      meta: meta ? { name: meta.name, description: meta.description, image: rewriteImg(meta.image), attributes: meta.attributes || [] } : null,
+      meta: meta ? { name: meta.name, description: meta.description, image: artUrl(addr, tokenId, rewriteImg(meta.image)), attributes: meta.attributes || [] } : null,
       order, approved,
     });
   },
@@ -1493,7 +1770,7 @@ const api = {
           collection: { address: c.address, name: info.name || c.name },
           tokens: await Promise.all(ids.map(async (tid) => {
             const meta = await tokenMeta(c.address, tid).catch(() => null);
-            return { tokenId: tid, label: hexToLabel(tid), name: meta?.name || hexToLabel(tid), image: rewriteImg(meta?.image), order: listed.get(tid) || null };
+            return { tokenId: tid, label: hexToLabel(tid), name: meta?.name || hexToLabel(tid), image: artUrl(c.address, tid, rewriteImg(meta?.image)), order: listed.get(tid) || null };
           })),
         });
       } catch (_) {}
@@ -2117,6 +2394,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/mint-batch') return await api.mintBatch(req, res);
     if (p === '/api/upload') return await api.upload(req, res);
     if ((m = /^\/u\/([a-f0-9]{8,64}\.(?:png|jpg|gif|webp))$/.exec(p))) return serveUpload(res, m[1]);
+    if ((m = /^\/img\/c\/([1-9A-HJ-NP-Za-km-z]{25,35})$/.exec(p))) return await serveCoverArt(req, res, m[1]);
+    if ((m = /^\/img\/t\/([1-9A-HJ-NP-Za-km-z]{25,35})\/(0x[0-9a-fA-F]{2,128})$/.exec(p))) return await serveTokenArt(req, res, m[1], m[2]);
     if (p.startsWith('/api/')) return json(res, 404, { error: 'no such endpoint' });
     return serveStatic(res, p === '/' ? '/index.html' : p);
   } catch (e) {
@@ -2189,4 +2468,17 @@ server.listen(CFG.PORT, () => {
       .then((h) => { if (h.events.length) console.log(`   history: indexed to ${h.events.length} event(s)`); })
       .catch(() => {});
   }, 20000);
+
+  /* Same reasoning for the pages: once the boot has proven it will live,
+     warm the home snapshot, then walk the registry's indexes one at a
+     time. Requests arriving meanwhile get stale-and-instant answers from
+     disk rather than cold-and-slow ones from the chain. */
+  setTimeout(() => {
+    (async () => {
+      await refreshHome({ maxAgeMs: 0 }).catch(() => {});
+      for (const c of registry.collections.slice()) {
+        try { await collectionIndex(c.address); } catch (_) {}
+      }
+    })().catch(() => {});
+  }, 8000);
 });
