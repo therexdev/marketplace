@@ -7,6 +7,9 @@
 const $ = (s) => document.querySelector(s);
 const view = $('#view');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* Grid tiles ask the art cache for a 480px derivative — a tile never
+   needs the multi-MB original. Full art stays for the token page. */
+const thumb = (u) => u && (u.startsWith('/img/') || u.startsWith('/u/')) ? u + (u.includes('?') ? '&' : '?') + 'w=480' : u;
 
 const KOIN = (sats) => {
   const n = Number(BigInt(sats || '0')) / 1e8;
@@ -167,7 +170,7 @@ function walletModal() {
 
 const tokCard = (colAddr, t) => `
   <a class="tok-card" href="#/t/${colAddr}/${encodeURIComponent(t.tokenId)}">
-    <div class="tok-art">${t.image ? `<img src="${esc(t.image)}" alt="" loading="lazy">` : '<div class="ph">🖼️</div>'}</div>
+    <div class="tok-art">${t.image ? `<img src="${esc(thumb(t.image))}" alt="" loading="lazy">` : '<div class="ph">🖼️</div>'}</div>
     <div class="tok-body">
       <span class="tok-name">${esc(t.name || t.label)}</span>
       ${t.order ? `<span class="price">${KOIN(t.order.price)} <small>KOIN</small></span>` : ''}
@@ -196,7 +199,7 @@ async function homeView() {
     <div class="grid">
       ${collections.map((c) => `
         <a class="col-card" href="#/c/${c.address}">
-          <div class="col-art">${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy">` : '<div class="ph">◆</div>'}</div>
+          <div class="col-art">${c.image ? `<img src="${esc(thumb(c.image))}" alt="" loading="lazy">` : '<div class="ph">◆</div>'}</div>
           <div class="col-body">
             <div class="col-name">${esc(c.name || c.address)}</div>
             <div class="col-desc">${esc(c.description || '')}</div>
@@ -668,7 +671,7 @@ async function listView(addr, tokenId) {
     <a class="crumb" href="${back}">← ${esc(t.meta?.name || t.label)}</a>
     <div class="list-wrap">
       <div class="list-item">
-        <div class="t-art">${t.meta?.image ? `<img src="${esc(t.meta.image)}" alt="">` : '<div class="ph">🖼️</div>'}</div>
+        <div class="t-art">${t.meta?.image ? `<img src="${esc(thumb(t.meta.image))}" alt="">` : '<div class="ph">🖼️</div>'}</div>
         <div>
           <h2>${esc(t.meta?.name || t.label)}</h2>
           <div class="kv">${esc(t.collection.name || addr)} · <span class="mono">${esc(t.label)}</span></div>

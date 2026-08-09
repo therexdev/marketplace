@@ -169,7 +169,13 @@ Nobody waits on the chain or on IPFS anymore:
   on disk (12MB per artwork, 2GB total, swept oldest-first). Every load
   after the first is a same-origin file with an ETag. This is also why
   covers stopped "sometimes not showing": one flaky gateway used to be
-  one broken `<img>`; now it is at worst one slow *first* view.
+  one broken `<img>`; now it is at worst one slow *first* view;
+* **grids load thumbnails** (`?w=480`): a tile does not need the 1.6MB
+  original, it needs the 50KB that look identical at tile size.
+  Derivatives are cut once with jimp (pure JS, vendored — a deploy
+  cannot lose it) and cached beside the original; the token page keeps
+  full resolution. Text responses (API JSON, the app, koilib) ship
+  gzipped — the vendored koilib alone drops 699KB → 129KB.
 
 When a collection's metadata still resolves but its image host has died
 outright (a deleted bucket, an unpinned CID), the operator can restore

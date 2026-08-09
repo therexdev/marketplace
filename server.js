@@ -38,6 +38,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { Signer, Provider, Contract, Transaction, Serializer, utils } = require('koilib');
 
 /* A background chain walk, a stray rejection, a bad response shape — none
@@ -471,11 +472,64 @@ async function fetchArt(src) {
   return run;
 }
 
-async function serveArt(req, res, src, cacheSeconds) {
+/* ---------------- thumbnails ----------------
+
+   A grid tile does not need the 1.6MB original — it needs 50KB that
+   look identical at 300px. Derivatives are cut once with jimp (pure
+   JS, vendored like everything else — a deploy cannot lose it), kept
+   beside the original in the cache, and regenerating after a sweep is
+   automatic. If jimp ever fails to load, originals serve as before —
+   slower, never broken. */
+let Jimp = null;
+try { ({ Jimp } = require('jimp')); }
+catch (_) { console.warn('[art] jimp unavailable — grids will serve full-size originals'); }
+
+const THUMB_W = 480;
+const thumbBusy = new Map();
+let thumbsCutting = 0;
+async function thumbOf(file, type) {
+  if (!Jimp || type === 'image/svg+xml') return null;
+  let stat;
+  try { stat = fs.statSync(file); } catch (_) { return null; }
+  if (stat.size < 96 * 1024) return null; // already lighter than a thumb would be
+  const tf = `${file}.w${THUMB_W}`;
+  if (fs.existsSync(tf + '.json')) {
+    const m = loadJson(tf + '.json', null);
+    if (m && fs.existsSync(tf)) return m.skip ? null : { file: tf, type: m.type };
+  }
+  if (thumbBusy.has(file)) return thumbBusy.get(file);
+  const run = (async () => {
+    try {
+      while (thumbsCutting >= 2) await new Promise((r) => setTimeout(r, 100));
+      thumbsCutting++;
+      const img = await Jimp.fromBuffer(fs.readFileSync(file));
+      if (img.width > THUMB_W) img.resize({ w: THUMB_W });
+      /* JPEG unless transparency is actually IN USE — art on a dark
+         page with a quietly blackened backdrop looks broken. */
+      let alpha = false;
+      const px = img.bitmap.data;
+      for (let i = 3; i < px.length && !alpha; i += 64) alpha = px[i] < 250;
+      const outType = alpha ? 'image/png' : 'image/jpeg';
+      const out = await img.getBuffer(outType, { quality: 80 });
+      if (out.length >= stat.size) {
+        saveJson(tf + '.json', { skip: true, at: Date.now() });
+        return null;
+      }
+      fs.writeFileSync(tf, out);
+      saveJson(tf + '.json', { type: outType, at: Date.now() });
+      return { file: tf, type: outType };
+    } catch (_) { return null; }
+    finally { thumbsCutting--; thumbBusy.delete(file); }
+  })();
+  thumbBusy.set(file, run);
+  return run;
+}
+
+async function serveArt(req, res, src, cacheSeconds, wantThumb) {
   if (!src) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
-  /* The etag IS the source url's hash: same source, same art. A cover
-     an admin re-points gets a new etag by construction. */
-  const tag = `"${imgKey(src)}"`;
+  /* The etag IS the source url's hash (plus the variant): same source,
+     same art. A cover an admin re-points gets a new etag by construction. */
+  const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W : ''}"`;
   if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
   const got = await fetchArt(src).catch(() => null);
   if (!got) {
@@ -487,30 +541,31 @@ async function serveArt(req, res, src, cacheSeconds) {
     res.writeHead(302, { 'Location': src, 'Cache-Control': 'no-store' });
     return res.end();
   }
+  const variant = (wantThumb && await thumbOf(got.file, got.type).catch(() => null)) || got;
   res.writeHead(200, {
-    'Content-Type': got.type || 'application/octet-stream',
+    'Content-Type': variant.type || 'application/octet-stream',
     'Cache-Control': `public, max-age=${cacheSeconds}`,
     'ETag': tag,
   });
-  fs.createReadStream(got.file).pipe(res);
+  fs.createReadStream(variant.file).pipe(res);
 }
 
-async function serveTokenArt(req, res, addr, tokenId) {
+async function serveTokenArt(req, res, addr, tokenId, wantThumb) {
   /* The persisted index already resolved this token's art url — no
      chain round-trip. Metadata is only consulted for tokens the index
      has never met. */
   const peek = indexPeek(addr);
   const known = peek && (peek.value.tokens || []).find((t) => t.tokenId === tokenId);
-  if (known && known.image) return serveArt(req, res, known.image, 86400);
+  if (known && known.image) return serveArt(req, res, known.image, 86400, wantThumb);
   // Unknown to the index, or indexed while its metadata was missing —
   // ask the metadata directly rather than 404ing on a stale blank.
   const meta = await tokenMeta(addr, tokenId).catch(() => null);
-  return serveArt(req, res, rewriteImg(meta?.image), 86400);
+  return serveArt(req, res, rewriteImg(meta?.image), 86400, wantThumb);
 }
 
-async function serveCoverArt(req, res, addr) {
+async function serveCoverArt(req, res, addr, wantThumb) {
   const row = registry.collections.find((c) => c.address === addr);
-  return serveArt(req, res, rewriteImg(row?.image), 3600);
+  return serveArt(req, res, rewriteImg(row?.image), 3600, wantThumb);
 }
 
 /* Art whose ONLY living copy is this cache — imported by the operator
@@ -661,12 +716,18 @@ async function buildCollectionIndex(addr) {
   const ids = [];
   let start = '';
   let partial = false;
+  /* An RPC having a bad minute must not masquerade as an empty
+     collection: Koinos Puppies once cached "0 tokens" for real because
+     its build ran during a timeout storm, and the site served that
+     nothing as truth. Errors are counted apart from genuine emptiness,
+     and a build that only erred THROWS instead of caching. */
+  let enumErrors = 0;
   for (let page = 0; page < 200; page++) {
     const args = { limit: 100, descending: false };
     if (start) args.start = start;
     let batch = [];
     try { batch = (await c.functions.get_tokens(args)).result?.token_ids || []; }
-    catch (_) { break; }
+    catch (_) { if (page > 0) enumErrors++; break; }
     ids.push(...batch);
     if (batch.length < 100) break;
     start = batch[batch.length - 1];
@@ -692,13 +753,26 @@ async function buildCollectionIndex(addr) {
         const chunk = Array.from({ length: Math.min(64, cap - at + 1) }, (_, i) => asHex(String(at + i)));
         const hits = await mapPool(chunk, META_CONCURRENCY, async (tid) => {
           try { return (await c.functions.owner_of({ token_id: tid })).result?.value ? tid : null; }
-          catch (_) { return null; }
+          catch (_) { enumErrors++; return null; }
         });
         ids.push(...hits.filter(Boolean));
         if (at + 64 > 240 && !ids.length) break;
       }
       if (ids.length) partial = partial || Number(info.totalSupply || 0) > INDEX_MAX_TOKENS;
     }
+  }
+
+  /* A rebuild on a day the metadata host sulks must never know LESS
+     than the index it replaces — pinned art, names and traits all ride
+     on these rows. A miss falls back to the previous index's row, and
+     ids an ERRORED walk failed to see again are carried over whole. */
+  const prev = new Map((indexPeek(addr)?.value?.tokens || []).map((t) => [t.tokenId, t]));
+  if (enumErrors > 0 && prev.size) {
+    const seen = new Set(ids);
+    for (const tid of prev.keys()) if (!seen.has(tid)) ids.push(tid);
+  }
+  if (!ids.length && enumErrors > 8) {
+    throw new Error(`enumeration of ${addr} failed under RPC stress — not caching emptiness`);
   }
   const capped = ids.slice(0, INDEX_MAX_TOKENS);
 
@@ -707,10 +781,6 @@ async function buildCollectionIndex(addr) {
      per token. After eight straight misses with no working path ever
      found, the rest of the walk renders from labels alone — and gets
      another chance on the next rebuild. */
-  /* A rebuild on a day the metadata host sulks must never know LESS
-     than the index it replaces — pinned art, names and traits all ride
-     on these rows. A miss falls back to the previous index's row. */
-  const prev = new Map((indexPeek(addr)?.value?.tokens || []).map((t) => [t.tokenId, t]));
   let metaMisses = 0;
   const tokens = (await mapPool(capped, META_CONCURRENCY, async (tid) => {
     const giveUp = metaMisses >= 8 && !metaPathHints.has(addr);
@@ -1433,9 +1503,17 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.json': 'application/json', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
 };
+/* Compress what compresses. res.req is the paired request (node has
+   carried it since v12), so no signature has to change. */
+const wantsGzip = (res) => /\bgzip\b/.test((res.req && res.req.headers['accept-encoding']) || '');
 function json(res, status, body) {
-  const data = JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  let data = Buffer.from(JSON.stringify(body));
+  const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+  if (data.length > 2048 && wantsGzip(res)) {
+    data = zlib.gzipSync(data);
+    headers['Content-Encoding'] = 'gzip';
+  }
+  res.writeHead(status, headers);
   res.end(data);
 }
 function readBody(req) {
@@ -1448,19 +1526,23 @@ function readBody(req) {
 /* Uploaded art. The name IS the content hash, so it can never change and
    is cached hard; the route pattern is the only path that reaches here,
    which keeps a filename from walking out of the directory. */
-function serveUpload(res, name) {
+async function serveUpload(res, name, wantThumb) {
   const file = path.join(UPLOAD_DIR, name);
   if (!file.startsWith(UPLOAD_DIR) || !fs.existsSync(file)) { res.writeHead(404); return res.end('not found'); }
   const ext = path.extname(file);
+  const full = { file, type: MIME[ext] || 'application/octet-stream' };
+  const variant = (wantThumb && await thumbOf(file, full.type).catch(() => null)) || full;
   res.writeHead(200, {
-    'Content-Type': MIME[ext] || 'application/octet-stream',
+    'Content-Type': variant.type,
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Access-Control-Allow-Origin': '*',
     'X-Content-Type-Options': 'nosniff',
   });
-  fs.createReadStream(file).pipe(res);
+  fs.createReadStream(variant.file).pipe(res);
 }
 
+const GZIPPABLE = new Set(['.html', '.js', '.css', '.json', '.svg']);
+const gzipCache = new Map(); // file:mtime -> gzipped buffer (koilib compresses once, not per visitor)
 function serveStatic(res, urlPath) {
   const clean = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
   let file = path.join(__dirname, 'public', clean);
@@ -1471,10 +1553,22 @@ function serveStatic(res, urlPath) {
     else { res.writeHead(404); return res.end('not found'); }
   }
   const ext = path.extname(file);
-  res.writeHead(200, {
+  const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
-  });
+  };
+  const stat = fs.statSync(file);
+  if (GZIPPABLE.has(ext) && stat.size > 2048 && wantsGzip(res)) {
+    const key = `${file}:${stat.mtimeMs}`;
+    if (!gzipCache.has(key)) {
+      gzipCache.set(key, zlib.gzipSync(fs.readFileSync(file)));
+      if (gzipCache.size > 100) gzipCache.delete(gzipCache.keys().next().value);
+    }
+    headers['Content-Encoding'] = 'gzip';
+    res.writeHead(200, headers);
+    return res.end(gzipCache.get(key));
+  }
+  res.writeHead(200, headers);
   fs.createReadStream(file).pipe(res);
 }
 
@@ -2390,7 +2484,14 @@ const api = {
        waiting for the next full rebuild. The invariant holds either
        way: bytes attach only to a url the token's own metadata names. */
     if (tokenId) {
-      const meta = await tokenMeta(addr, tokenId).catch(() => null);
+      /* The index may already hold this token's art url from an earlier
+         resolution — no need to win a rate-limit fight with a gateway
+         to learn something we already know. */
+      const knownRow = indexPeek(addr)?.value?.tokens?.find(
+        (t) => String(t.tokenId).toLowerCase() === tokenId && t.image);
+      const meta = knownRow
+        ? { name: knownRow.name, image: knownRow.image, attributes: null }
+        : await tokenMeta(addr, tokenId).catch(() => null);
       const url = rewriteImg(meta?.image);
       if (!url) {
         res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '15' });
@@ -2403,7 +2504,7 @@ const api = {
       pinArt(url, buf, sniffed[1]);
       const hit = indexPeek(addr);
       const row = hit?.value?.tokens?.find((t) => String(t.tokenId).toLowerCase() === tokenId);
-      if (row) {
+      if (row && !knownRow) { // fresh metadata heals the row; a reused row has nothing new to say
         row.name = meta.name || row.name;
         row.image = url;
         row.traits = traitsOf(meta);
@@ -2501,9 +2602,10 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/mint-batch') return await api.mintBatch(req, res);
     if (p === '/api/upload') return await api.upload(req, res);
     if (p === '/api/art') return await api.art(req, res, url.searchParams);
-    if ((m = /^\/u\/([a-f0-9]{8,64}\.(?:png|jpg|gif|webp))$/.exec(p))) return serveUpload(res, m[1]);
-    if ((m = /^\/img\/c\/([1-9A-HJ-NP-Za-km-z]{25,35})$/.exec(p))) return await serveCoverArt(req, res, m[1]);
-    if ((m = /^\/img\/t\/([1-9A-HJ-NP-Za-km-z]{25,35})\/(0x[0-9a-fA-F]{2,128})$/.exec(p))) return await serveTokenArt(req, res, m[1], m[2]);
+    const wantThumb = url.searchParams.get('w') === String(480);
+    if ((m = /^\/u\/([a-f0-9]{8,64}\.(?:png|jpg|gif|webp))$/.exec(p))) return await serveUpload(res, m[1], wantThumb);
+    if ((m = /^\/img\/c\/([1-9A-HJ-NP-Za-km-z]{25,35})$/.exec(p))) return await serveCoverArt(req, res, m[1], wantThumb);
+    if ((m = /^\/img\/t\/([1-9A-HJ-NP-Za-km-z]{25,35})\/(0x[0-9a-fA-F]{2,128})$/.exec(p))) return await serveTokenArt(req, res, m[1], m[2], wantThumb);
     if (p.startsWith('/api/')) return json(res, 404, { error: 'no such endpoint' });
     return serveStatic(res, p === '/' ? '/index.html' : p);
   } catch (e) {

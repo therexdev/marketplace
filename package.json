@@ -10,6 +10,7 @@
     "test": "node tests/market-check.js"
   },
   "dependencies": {
+    "jimp": "^1.6.1",
     "koilib": "^9.1.0"
   }
 }
