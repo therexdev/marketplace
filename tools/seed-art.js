@@ -28,6 +28,12 @@ const KEY = arg('key', '');
 const ADDR = arg('collection', '');
 const DIR = arg('dir', '');
 const REGISTER = process.argv.includes('--register');
+/* Optional {"Mastermind.png": "0x31", …} map. With it, each upload
+   names its token directly and the server resolves that ONE token's
+   metadata — no dependence on how much of the index survived a
+   rate-limited build. Without it, filename matching does the work. */
+const MAP = arg('map', '');
+const tokenOf = MAP ? JSON.parse(fs.readFileSync(MAP, 'utf8')) : {};
 
 if (!SITE || !KEY || !ADDR || !DIR) {
   console.error('usage: node tools/seed-art.js --site https://… --key ADMIN_KEY --collection 1… --dir ./art [--register]');
@@ -48,23 +54,35 @@ const files = [];
   }
 })(DIR);
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 (async () => {
   console.log(`${files.length} image file(s) under ${DIR}`);
   let pinned = 0, missed = 0, failed = 0;
   for (const f of files) {
     const name = path.basename(f);
     const body = fs.readFileSync(f);
-    let out;
-    try {
-      const r = await fetch(
-        `${SITE}/api/art?key=${encodeURIComponent(KEY)}&collection=${ADDR}&file=${encodeURIComponent(name)}`,
-        { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body, signal: AbortSignal.timeout(600000) },
-      );
-      out = await r.json().catch(() => ({}));
-      if (r.ok) { pinned++; console.log(`  pinned ${name} -> ${(out.tokens || []).map((t) => t.name || t.label).join(', ')}`); }
-      else if (r.status === 404) { missed++; console.log(`  no token names ${name} — skipped`); }
-      else { failed++; console.log(`  FAILED ${name}: ${r.status} ${out.error || ''}`); }
-    } catch (e) { failed++; console.log(`  FAILED ${name}: ${String(e.message).slice(0, 80)}`); }
+    /* A cold collection answers 503 while the server indexes it, and a
+       proxy in front may 502/504 while things warm — those are "not
+       yet", not "no". Wait and retry; give the first file the longest
+       leash since it is the one that triggers the indexing. */
+    let out, status = 0;
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (attempt) { console.log(`  … server still indexing, waiting (${name})`); await sleep(20000); }
+      try {
+        const tok = tokenOf[name] ? `&token=${tokenOf[name]}` : '';
+        const r = await fetch(
+          `${SITE}/api/art?key=${encodeURIComponent(KEY)}&collection=${ADDR}&file=${encodeURIComponent(name)}${tok}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body, signal: AbortSignal.timeout(600000) },
+        );
+        status = r.status;
+        out = await r.json().catch(() => ({}));
+      } catch (e) { status = 0; out = { error: String(e.message).slice(0, 80) }; }
+      if (![0, 502, 503, 504].includes(status)) break;
+    }
+    if (status === 200) { pinned++; console.log(`  pinned ${name} -> ${(out.tokens || []).map((t) => t.name || t.label).join(', ')}`); }
+    else if (status === 404) { missed++; console.log(`  no token names ${name} — skipped`); }
+    else { failed++; console.log(`  FAILED ${name}: ${status} ${out.error || ''}`); }
   }
   console.log(`\npinned ${pinned}, unmatched ${missed}, failed ${failed}`);
   if (REGISTER && pinned && !failed) {

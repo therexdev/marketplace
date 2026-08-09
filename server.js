@@ -2374,14 +2374,58 @@ const api = {
     }
     const addr = String(q.get('collection') || '');
     const file = decodeURIComponent(String(q.get('file') || '')).slice(0, 200).toLowerCase();
+    const tokenId = String(q.get('token') || '').toLowerCase();
     if (!isAddr(addr)) return json(res, 400, { error: 'A collection address is required' });
-    if (!file) return json(res, 400, { error: 'Pass ?file=<name.ext> as it appears in the metadata image url' });
+    if (!file && !tokenId) return json(res, 400, { error: 'Pass ?file=<name.ext> as the metadata names it, or ?token=0x…' });
+    if (tokenId && !/^0x[0-9a-f]{2,128}$/.test(tokenId)) return json(res, 400, { error: 'token must be 0x-hex' });
     const buf = await readRaw(req, IMG_FILE_MAX);
     if (buf === 'OVERSIZE') return json(res, 413, { error: `Art larger than ${Math.round(IMG_FILE_MAX / 1048576)}MB` });
     if (!buf || !buf.length) return json(res, 400, { error: 'The upload did not arrive whole — try again' });
     const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
     if (!sniffed) return json(res, 400, { error: 'That file is not a PNG, JPEG, GIF, WebP or SVG image' });
-    const idx = await collectionIndex(addr).catch(() => null);
+
+    /* Named a specific token? Resolve THAT token's metadata on the spot
+       — one fetch, not a sixty-token walk — pin against the url it
+       names, and heal the index row so the grid shows the art without
+       waiting for the next full rebuild. The invariant holds either
+       way: bytes attach only to a url the token's own metadata names. */
+    if (tokenId) {
+      const meta = await tokenMeta(addr, tokenId).catch(() => null);
+      const url = rewriteImg(meta?.image);
+      if (!url) {
+        res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '15' });
+        return res.end(JSON.stringify({ error: 'That token\'s metadata is unreachable right now — retry in a moment' }));
+      }
+      const base = decodeURIComponent(url.split('/').pop() || '').toLowerCase();
+      if (file && base !== file) {
+        return json(res, 400, { error: `That token's metadata names its art ${base}, not ${file}` });
+      }
+      pinArt(url, buf, sniffed[1]);
+      const hit = indexPeek(addr);
+      const row = hit?.value?.tokens?.find((t) => String(t.tokenId).toLowerCase() === tokenId);
+      if (row) {
+        row.name = meta.name || row.name;
+        row.image = url;
+        row.traits = traitsOf(meta);
+        saveJson(path.join(IDX_DIR, addr + '.json'), hit);
+      }
+      return json(res, 200, {
+        ok: true, pinned: 1, bytes: buf.length,
+        tokens: [{ tokenId, label: hexToLabel(tokenId), name: meta.name || null }],
+      });
+    }
+
+    /* A cold collection's index takes minutes to build, and the proxy
+       in front of a deployment kills requests long before that — the
+       build must never ride on THIS request. Kick it and say so; the
+       importing tool retries until the index is there. */
+    const hit = indexPeek(addr);
+    if (!hit) {
+      queueRebuild(addr);
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '20' });
+      return res.end(JSON.stringify({ error: 'Indexing this collection first — retry in a moment', building: true }));
+    }
+    const idx = hit.value;
     if (!idx) return json(res, 400, { error: 'That collection cannot be indexed' });
     const matches = (idx.tokens || []).filter((t) => {
       const base = decodeURIComponent(String(t.image || '').split('/').pop() || '').toLowerCase();

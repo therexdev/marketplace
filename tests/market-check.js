@@ -131,7 +131,15 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
     const tx = new Transaction({ signer: user, provider, options: { payer, payee, rcLimit } });
     for (const op of ops) await tx.pushOperation(op);
     // Nonce/chain-id come from mainnet for realism; the tx never lands.
-    await tx.prepare();
+    // The public RPC flakes under load, and one timed-out chain-id read
+    // must not void a whole suite — retry the prepare a few times.
+    for (let i = 0; ; i++) {
+      try { await tx.prepare(); break; }
+      catch (e) {
+        if (i >= 3) throw e;
+        await sleep(2000 * (i + 1));
+      }
+    }
     if (sign) await tx.sign();
     return tx.transaction;
   }
@@ -463,6 +471,20 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
     imp = await fetch(`http://127.0.0.1:${PORT}/api/art?key=test-admin-key&collection=${MATA}&file=no-such-art.png`,
       { method: 'POST', body: fakePng });
     check('…and refuses a filename no token in the metadata names', imp.status === 404, `status=${imp.status}`);
+    /* Naming the token outright skips the index entirely — the server
+       resolves that ONE token's metadata and pins against the url it
+       names, so a wounded index cannot block a restoration. */
+    imp = await fetch(`http://127.0.0.1:${PORT}/api/art?key=test-admin-key&collection=${MATA}&token=0x4d41544130303031`,
+      { method: 'POST', body: fakePng });
+    const impBody = await imp.json().catch(() => ({}));
+    check('naming a token imports even past a wounded index', imp.status === 200 && impBody.pinned === 1,
+      `status=${imp.status} ${JSON.stringify(impBody).slice(0, 100)}`);
+    if (imp.status === 200) {
+      const got = await fetch(`http://127.0.0.1:${PORT}/img/t/${MATA}/0x4d41544130303031`);
+      const bytes = Buffer.from(await got.arrayBuffer());
+      check('…and the imported bytes are exactly what the site serves back',
+        got.ok && bytes.length === fakePng.length, `status=${got.status} len=${bytes.length}`);
+    }
 
     // Registered by mistake? The admin key takes it back out — nobody else.
     let del = await api(`/api/collections/${CREW}`, {
