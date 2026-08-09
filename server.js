@@ -2019,8 +2019,9 @@ const api = {
   async owned(req, res, q) {
     const addr = String(q.get('address') || '');
     if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
-    const out = [];
-    for (const c of registry.collections) {
+    /* Twenty-eight collections asked one after another took forty
+       seconds; asked six at a time it is a page, not a pilgrimage. */
+    const scanned = await mapPool(registry.collections.slice(), 6, async (c) => {
       try {
         let ids = [];
         try {
@@ -2035,7 +2036,7 @@ const api = {
              only delay a listing, never invent one. Acquisitions newer
              than the last rebuild appear after the next one. */
           const peek = indexPeek(c.address);
-          if (!peek) { queueRebuild(c.address); continue; }
+          if (!peek) { queueRebuild(c.address); return null; }
           const mine = (peek.value.tokens || []).filter((t) => t.owner === addr);
           const verified = await cached(`owned-legacy:${c.address}:${addr}`, 30000, async () =>
             mapPool(mine, META_CONCURRENCY, async (t) => {
@@ -2047,20 +2048,28 @@ const api = {
             }));
           ids = (verified || []).filter(Boolean);
         }
-        if (!ids.length) continue;
+        if (!ids.length) return null;
         const orders = await collectionOrders(c.address).catch(() => []);
         const listed = new Map(orders.map(o => [o.tokenId, o]));
         const info = await collectionInfo(c.address);
-        out.push({
+        /* The index already resolved names and art for most of these —
+           read it first, and only ask the metadata for tokens it has
+           never met. */
+        const rows = new Map(((indexPeek(c.address)?.value?.tokens) || []).map((t) => [t.tokenId, t]));
+        return {
           collection: { address: c.address, name: info.name || c.name },
           tokens: await Promise.all(ids.map(async (tid) => {
-            const meta = await tokenMeta(c.address, tid).catch(() => null);
-            return { tokenId: tid, label: hexToLabel(tid), name: meta?.name || hexToLabel(tid), image: artUrl(c.address, tid, rewriteImg(meta?.image)), order: listed.get(tid) || null };
+            const row = rows.get(tid);
+            const meta = row && (row.image || !String(row.name || '').match(/^\d+$/))
+              ? { name: row.name, image: row.image }
+              : await tokenMeta(c.address, tid).catch(() => null);
+            const img = row && row.image ? row.image : rewriteImg(meta?.image);
+            return { tokenId: tid, label: hexToLabel(tid), name: meta?.name || hexToLabel(tid), image: artUrl(c.address, tid, img), order: listed.get(tid) || null };
           })),
-        });
-      } catch (_) {}
-    }
-    json(res, 200, { collections: out });
+        };
+      } catch (_) { return null; }
+    });
+    json(res, 200, { collections: scanned.filter(Boolean) });
   },
 
   /** The auth bridge: the SAME Google/email account resolves to the SAME
