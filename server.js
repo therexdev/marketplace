@@ -460,6 +460,11 @@ const coverUrl = (row) =>
   !row || !row.image ? '' : localUpload(row.image) || `/img/c/${row.address}`;
 
 const imgKey = (src) => crypto.createHash('sha256').update(src).digest('hex');
+/** What the cache holds for one source url, without fetching anything. */
+const artCacheMeta = (src) => {
+  const file = path.join(IMG_DIR, imgKey(src));
+  return fs.existsSync(file) ? loadJson(file + '.json', null) : null;
+};
 const imgDead = new Map();     // key -> when the last hunt failed (retried after 10 min)
 const imgBusy = new Map();     // key -> in-flight fetch, so a grid asks once
 let imgFetching = 0;           // upstream fetches in flight, across all keys
@@ -1598,45 +1603,79 @@ async function sponsor(txJson, ip) {
 }
 
 /* A collection nobody gave a cover image: front it with its most recent
-   active listing's art, or failing that the newest token that has any.
+   active listing's art, or failing that the newest tokens that have any.
    Found once, stored in the registry exactly like a hand-picked image —
    so the cost is paid once, and an owner's later choice still wins by
    simply replacing the field. */
 const coverBusy = new Set();
 const coverTried = new Map(); // addr -> when the last hunt came up empty
+const COVER_TRIES = 8;
+
+/** What a collection could front itself with, newest art first: its most
+    recent listing, then the newest indexed tokens naming any art at all.
+    SEVERAL of them, because one dead url at the end of an index is not
+    proof the collection has no art — the token before it is often fine,
+    and hunting a single candidate let one broken tile decide the cover
+    for the whole collection. */
+async function coverCandidates(addr) {
+  const urls = [];
+  const add = (u) => { const s = rewriteImg(u); if (s && !urls.includes(s)) urls.push(s); };
+  const orders = await collectionOrders(addr).catch(() => []);
+  if (orders.length) {
+    const newest = orders.reduce((a, b) => (Number(b.created || 0) > Number(a.created || 0) ? b : a));
+    add(((await tokenMeta(addr, newest.tokenId).catch(() => null)) || {}).image);
+  }
+  const idx = await collectionIndex(addr).catch(() => null);
+  const toks = (idx && idx.tokens) || [];
+  for (let i = toks.length - 1; i >= 0 && urls.length < COVER_TRIES; i--) add(toks[i].image);
+  return urls;
+}
+
 async function deriveCover(addr) {
   if (coverBusy.has(addr)) return;
   const tried = coverTried.get(addr);
   if (tried && Date.now() - tried < 600000) return;
   coverBusy.add(addr);
   try {
-    let img = null;
-    const orders = await collectionOrders(addr).catch(() => []);
-    if (orders.length) {
-      const newest = orders.reduce((a, b) => (Number(b.created || 0) > Number(a.created || 0) ? b : a));
-      img = rewriteImg(((await tokenMeta(addr, newest.tokenId).catch(() => null)) || {}).image);
-    }
-    if (!img) {
-      const idx = await collectionIndex(addr).catch(() => null);
-      const toks = (idx && idx.tokens) || [];
-      for (let i = toks.length - 1; i >= 0 && !img; i--) img = toks[i].image;
-    }
     /* Unpinned art produces a URL that answers 504 on every gateway — a
-       broken cover reads worse than the placeholder. Persist only a url
-       that demonstrably serves an image, from whichever gateway does. */
+       broken cover reads worse than the placeholder — so a candidate is
+       kept only once it has really PRODUCED BYTES. The ART CACHE is what
+       asks, because it knows two things a probe at the origin does not:
+       which gateway answers for this CID, and that art whose host DIED
+       may still be HERE, imported by the operator and pinned. Asking the
+       origin alone left exactly the collections the import exists to
+       rescue wearing a placeholder over art this server was already
+       serving on their own token pages. What gets stored is the SOURCE
+       url, never the gateway that happened to answer, so /img/c/… reads
+       the very cache entry this hunt just filled — and the hunt is
+       bounded in TIME as well as in count, since a collection where
+       everything is dead would otherwise pay eight timeouts a round. It
+       gets further each round anyway: a url that just failed answers
+       instantly from the negative cache. */
+    const deadline = Date.now() + 30000;
     let proven = null;
-    for (const u of (img ? (ipfsRoots(img) || [img]) : [])) {
-      try {
-        const r = await fetch(u, { signal: AbortSignal.timeout(7000), size: 4194304 });
-        if (r.ok && /^image\//.test(r.headers.get('content-type') || '')) { proven = u; }
-        try { await r.arrayBuffer(); } catch (_) {}
-        if (proven) break;
-      } catch (_) {}
+    for (const u of await coverCandidates(addr)) {
+      if (await fetchArt(u).catch(() => null)) { proven = u; break; }
+      if (Date.now() > deadline) break;
     }
     const row = registry.collections.find((x) => x.address === addr);
     if (proven && row && !row.image) { row.image = proven; saveJson(REGISTRY_FILE, registry); }
     else coverTried.set(addr, Date.now());
   } finally { coverBusy.delete(addr); }
+}
+
+/** Art the operator just vouched for, on a collection with no cover:
+    front it. The bytes are here and proven by arriving, so an import
+    lights the card up on its FIRST file instead of on some later hunt —
+    and for a collection whose whole problem is a dead art host, that is
+    the difference between a cover and a permanent placeholder. A cover
+    chosen by hand still wins, by simply replacing the field. */
+function adoptCover(addr, src) {
+  const row = registry.collections.find((c) => c.address === addr);
+  if (!row || row.image || !src) return;
+  row.image = src;
+  saveJson(REGISTRY_FILE, registry);
+  coverTried.delete(addr);
 }
 
 /* ---------------- http plumbing ---------------- */
@@ -1859,6 +1898,42 @@ const api = {
       if (homeSnap) homeSnap.collections = homeSnap.collections.filter((c) => c.address !== addr);
       return json(res, 200, { ok: true, removed: addr });
     }
+    /* The registry's editor, behind the same admin key. A collection
+       whose art the internet lost cannot derive a cover from anything —
+       nothing it names still answers — so SOMEONE has to be able to give
+       it one, and re-adding it is not that somebody: POST refuses a
+       duplicate, and deleting first would throw away the description and
+       the day it was added. Sending image:null clears the cover instead
+       and re-arms the automatic hunt. */
+    if (req.method === 'PATCH') {
+      const body = await readBody(req).catch(() => ({}));
+      const key = String(body.key || new URL(req.url, 'http://localhost').searchParams.get('key') || '');
+      if (!CFG.ADMIN_KEY || key !== CFG.ADMIN_KEY) return json(res, 403, { error: 'the admin key opens this door' });
+      const row = registry.collections.find((c) => c.address === addr);
+      if (!row) return json(res, 404, { error: 'not registered' });
+      if ('image' in body) {
+        const cleared = body.image === null || String(body.image).trim() === '';
+        const img = cleared ? '' : safeImage(body.image);
+        if (img === null) return json(res, 400, { error: 'Image must be an https:// link, an ipfs:// uri, or a /u/… upload from this site' });
+        row.image = img;
+        coverTried.delete(addr);
+        // Cleared on purpose: hunt again now rather than in ten minutes.
+        if (cleared) deriveCover(addr).catch(() => {});
+        else { const src = rewriteImg(img); if (src) fetchArt(src).catch(() => {}); }
+      }
+      if ('name' in body) row.name = String(body.name || '').slice(0, 120) || row.name;
+      if ('description' in body) row.description = String(body.description || '').slice(0, 1000);
+      if ('featured' in body) row.featured = !!body.featured;
+      saveJson(REGISTRY_FILE, registry);
+      /* The snapshot carries the description and the featured flag; the
+         cover it re-reads from the registry on every serve. Patch what
+         it holds so the home page does not wait out a rebuild. */
+      if (homeSnap) {
+        const at = homeSnap.collections.findIndex((c) => c.address === addr);
+        if (at >= 0) homeSnap.collections[at] = { ...homeSnap.collections[at], ...row };
+      }
+      return json(res, 200, { ok: true, collection: { ...row, image: coverUrl(row) } });
+    }
     const reg = registry.collections.find(c => c.address === addr) || null;
     const info = await collectionInfo(addr);
     // A blinked RPC read of the order book must not take the page down.
@@ -1949,6 +2024,46 @@ const api = {
       indexed: idx.total,
       partial: idx.partial,
       nextOffset: offset + limit < rows.length ? offset + limit : null,
+    });
+  },
+
+  /** Why is that card STILL a placeholder? From outside, a collection
+      with no cover and one whose art died look identical — both are a
+      grey diamond — so this says which. It lists what the cover hunt
+      would try, newest art first, and what this server already knows
+      about each url: pinned (imported here and archived), cached
+      (fetched and kept), unreachable (a recent attempt produced
+      nothing), or untried. ?probe=1 stops reporting and actually goes
+      and asks. Admin-only, because probing spends this server's
+      patience on somebody else's hosts. */
+  async cover(req, res, addr, q) {
+    if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
+    if (!CFG.ADMIN_KEY || q.get('key') !== CFG.ADMIN_KEY) return json(res, 403, { error: 'the admin key opens this door' });
+    const row = registry.collections.find((c) => c.address === addr);
+    if (!row) return json(res, 404, { error: 'not registered' });
+    // Probing is bounded too — this is a diagnosis, not an errand.
+    const deadline = Date.now() + 25000;
+    const probe = q.get('probe') === '1';
+    const candidates = [];
+    for (const url of await coverCandidates(addr)) {
+      const meta = artCacheMeta(url);
+      const held = meta ? (meta.pinned ? 'pinned' : 'cached') : null;
+      const state = held || (probe && Date.now() < deadline
+        ? ((await fetchArt(url).catch(() => null)) ? 'cached' : 'unreachable')
+        : (imgDead.has(imgKey(url)) ? 'unreachable' : 'untried'));
+      candidates.push({ url, state, bytes: meta ? meta.size : undefined });
+    }
+    const have = candidates.some((c) => c.state === 'pinned' || c.state === 'cached');
+    json(res, 200, {
+      address: addr,
+      cover: row.image || '',
+      servedAt: row.image ? coverUrl(row) : null,
+      lastHuntCameUpEmpty: coverTried.has(addr) ? new Date(coverTried.get(addr)).toISOString() : null,
+      candidates,
+      hint: row.image ? 'this collection has a cover'
+        : !candidates.length ? 'this collection names no art at all — its metadata host is gone. Hand it a cover: tools/set-cover.js'
+        : have ? 'art for this collection is here — the next hunt (within ten minutes) will front it'
+        : 'every url its metadata names is unreachable. Import the original files with tools/seed-art.js, or hand it a cover with tools/set-cover.js',
     });
   },
 
@@ -2676,6 +2791,7 @@ const api = {
         return json(res, 400, { error: `That token's metadata names its art ${base}, not ${file}` });
       }
       pinArt(url, buf, sniffed[1]);
+      adoptCover(addr, url);
       const hit = indexPeek(addr);
       const row = hit?.value?.tokens?.find((t) => String(t.tokenId).toLowerCase() === tokenId);
       if (row && !knownRow) { // fresh metadata heals the row; a reused row has nothing new to say
@@ -2709,6 +2825,7 @@ const api = {
     if (!matches.length) return json(res, 404, { error: `No token in this collection names its art ${file}` });
     const sources = [...new Set(matches.map((t) => t.image))];
     for (const src of sources) pinArt(src, buf, sniffed[1]);
+    adoptCover(addr, sources[0]);
     json(res, 200, {
       ok: true, pinned: sources.length, bytes: buf.length,
       tokens: matches.slice(0, 20).map((t) => ({ tokenId: t.tokenId, label: t.label, name: t.name })),
@@ -2761,6 +2878,7 @@ const server = http.createServer(async (req, res) => {
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)$/.exec(p))) return await api.collection(req, res, m[1]);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/tokens$/.exec(p))) return await api.tokens(req, res, m[1], url.searchParams);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/facets$/.exec(p))) return await api.facets(req, res, m[1]);
+    if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/cover$/.exec(p))) return await api.cover(req, res, m[1], url.searchParams);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/token\/([0-9a-fx]+)$/i.exec(p))) return await api.token(req, res, m[1], m[2]);
     if (p === '/api/owned') return await api.owned(req, res, url.searchParams);
     if (p === '/api/account') return await api.account(req, res);

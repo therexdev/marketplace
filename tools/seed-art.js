@@ -13,6 +13,10 @@
    once the art is in (harmless if it is already registered). The first
    upload can take a while: the server may be building the collection's
    index, patiently resolving metadata from whatever host still answers.
+
+   A registered collection with no cover is fronted with the first file
+   that lands, so its card stops being a placeholder immediately; a cover
+   chosen by hand (tools/set-cover.js) always wins over that.
 */
 'use strict';
 

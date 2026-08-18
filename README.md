@@ -76,7 +76,7 @@ MARKET_ADDR=<deployed address> KOINOS_DEV_WIF=<dev wif> node server.js
 | `AURVANIA_API` | sign-in bridge target (default `https://aurvania.quest`) |
 | `GOOGLE_CLIENT_ID` | the game's Google OAuth client id — set it so sign-in does not depend on the bridge being reachable |
 | `BRIDGE_UA` | User-Agent used when calling the game (default clears its host's filter) |
-| `ADMIN_KEY` | privileged registry fields (`featured`) — adding collections needs no key |
+| `ADMIN_KEY` | editing or removing a registry row, importing lost art, `featured` — *adding* a collection needs no key |
 | `LAUNCH_FEE_KOIN` | cost to launch a collection (default 100; set 0 for free) |
 | `LAUNCH_PER_DAY_PER_ACCOUNT` | launches per wallet per day (default 3) |
 | `LAUNCH_PER_DAY_TOTAL` | launches per day across the site (default 12) |
@@ -188,6 +188,31 @@ becomes the art's archive, not just its cache. `tools/seed-art.js`
 walks a directory of files and imports a whole collection in one run
 (`--register` also adds it to the registry afterwards).
 
+A collection with no cover borrows one from its own newest art — and it
+is the **art cache** that decides whether a candidate counts, not a probe
+at the origin. That matters for exactly the collections this rescue
+exists for: their hosts are gone, so nothing they name answers, while the
+imported bytes sit right here. The hunt walks several candidates (one
+dead url near the end of an index is not proof the collection has no
+art), keeps the first that produces bytes, and stores the *source* url so
+`/img/c/…` reads the same cache entry. An import into a coverless
+collection is adopted as its cover immediately, so a `seed-art.js` run
+lights the card up on its first file.
+
+When the metadata host died too, the collection names nothing at all —
+there is no url to import art against and nothing to hunt. Someone has to
+hand it a cover:
+
+```sh
+node tools/set-cover.js --site https://<site> --key <ADMIN_KEY> \
+     --collection 1N2Ahq… --file ./og-rex.png
+```
+
+which uploads the file here (content-addressed under `/u/…`, so it cannot
+go dark a second time) and points the registry row at it. `--url` takes a
+link instead, `--clear` hands the collection back to the automatic hunt,
+and `--description`/`--name` ride along on the same edit.
+
 ### Trade history
 
 Every listing, cancellation and sale is already on chain: the contract emits
@@ -254,6 +279,20 @@ curl -X POST https://<site>/api/collections \
   -d '{"key":"<ADMIN_KEY>","address":"1...","description":"...","image":"https://..."}'
 ```
 
+Editing one afterwards is the admin key's, since the registry is the one
+curated thing here:
+
+```sh
+curl -X PATCH https://<site>/api/collections/1... \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"<ADMIN_KEY>","image":"https://...","description":"..."}'
+```
+
+`image`, `description`, `name` and `featured` are each optional — only the
+fields present in the body change. `"image":null` clears the cover and
+re-arms the automatic hunt. (`DELETE` on the same path takes the
+collection back out of the registry entirely.)
+
 The address is validated against the chain before it is accepted (it must
 answer as a KCS-2 collection). Aurvania Relics ships in the seed registry;
 any collection is also reachable unregistered at `#/c/<address>` — the
@@ -265,6 +304,10 @@ registry only decides the home page, and which approvals the sponsor pays for.
   transaction per sponsor gate (the happy path is proven with a zero-mana
   payer, so nothing can land on chain: "passed validation, died at the
   mempool" is the success signal).
+* `cover-check.js` — covers for collections whose art hosts died: the
+  hunt walking past a dead url to the pinned archive behind it, an import
+  fronting a coverless collection, and the admin key handing a cover to a
+  collection that names nothing. Entirely local — no chain, no gateway.
 * `market-ui.js` — Playwright: home → collection → token → connect modal,
   against live mainnet reads. Needs `PLAYWRIGHT_DIR` and `CHROMIUM`.
 
