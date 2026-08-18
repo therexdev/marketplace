@@ -7,8 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "build": "echo \"no build step — OURO serves static files and server.js directly\"",
-    "test": "node tests/market-check.js && node tests/cover-check.js",
-    "test:covers": "node tests/cover-check.js"
+    "test": "node tests/market-check.js && node tests/cover-check.js && node tests/recover-check.js",
+    "test:offline": "node tests/cover-check.js && node tests/recover-check.js"
   },
   "dependencies": {
     "jimp": "^1.6.1",

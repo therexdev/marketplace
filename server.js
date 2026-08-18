@@ -2027,6 +2027,43 @@ const api = {
     });
   },
 
+  /** Every url this collection names for its art, and what this server
+      holds of each. This is the MAP A RECOVERY RUN WORKS FROM: without
+      it, a tool outside has no way to learn the original urls at all —
+      the pages hand out /img/… paths on purpose, and the source is only
+      ever known here. ?missing=1 narrows it to the art we do not have,
+      which is the only part a rescue cares about. Admin-only: what is
+      broken and where it used to live is operator business. */
+  async collectionArt(req, res, addr, q) {
+    if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
+    if (!CFG.ADMIN_KEY || q.get('key') !== CFG.ADMIN_KEY) return json(res, 403, { error: 'the admin key opens this door' });
+    const hit = indexPeek(addr);
+    if (!hit) {
+      queueRebuild(addr);
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '20' });
+      return res.end(JSON.stringify({ error: 'Indexing this collection first — retry in a moment', building: true }));
+    }
+    const all = (hit.value && hit.value.tokens) || [];
+    const rows = all.map((t) => {
+      const meta = t.image ? artCacheMeta(t.image) : null;
+      return {
+        tokenId: t.tokenId, label: t.label, name: t.name, source: t.image || null,
+        /* unnamed is a different problem from missing, and conflating
+           them sends a rescue hunting urls that never existed. */
+        state: !t.image ? 'unnamed' : meta ? (meta.pinned ? 'pinned' : 'cached') : 'missing',
+      };
+    });
+    const count = (st) => rows.filter((r) => r.state === st).length;
+    json(res, 200, {
+      address: addr,
+      indexed: rows.length,
+      held: count('pinned') + count('cached'),
+      missing: count('missing'),
+      unnamed: count('unnamed'),
+      tokens: q.get('missing') === '1' ? rows.filter((r) => r.state === 'missing') : rows,
+    });
+  },
+
   /** Why is that card STILL a placeholder? From outside, a collection
       with no cover and one whose art died look identical — both are a
       grey diamond — so this says which. It lists what the cover hunt
@@ -2879,6 +2916,7 @@ const server = http.createServer(async (req, res) => {
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/tokens$/.exec(p))) return await api.tokens(req, res, m[1], url.searchParams);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/facets$/.exec(p))) return await api.facets(req, res, m[1]);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/cover$/.exec(p))) return await api.cover(req, res, m[1], url.searchParams);
+    if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/art$/.exec(p))) return await api.collectionArt(req, res, m[1], url.searchParams);
     if ((m = /^\/api\/collections\/([1-9A-HJ-NP-Za-km-z]+)\/token\/([0-9a-fx]+)$/i.exec(p))) return await api.token(req, res, m[1], m[2]);
     if (p === '/api/owned') return await api.owned(req, res, url.searchParams);
     if (p === '/api/account') return await api.account(req, res);

@@ -199,6 +199,33 @@ art), keeps the first that produces bytes, and stores the *source* url so
 collection is adopted as its cover immediately, so a `seed-art.js` run
 lights the card up on its first file.
 
+### When you do not have the files
+
+Restoring art from local files assumes somebody still HAS them. Whoever
+lists other people's collections does not — but the art was on the public
+web for years before its host died, and the Wayback Machine crawls the
+public web. `tools/recover-art.js` asks the archive for the exact urls the
+chain names, and imports whatever comes back:
+
+```sh
+# was any of it ever crawled? (asks, downloads nothing)
+node tools/recover-art.js --site https://<site> --key <ADMIN_KEY> \
+     --collection 1EwJUW4… --survey
+
+# pull it in
+node tools/recover-art.js --site https://<site> --key <ADMIN_KEY> \
+     --collection 1EwJUW4… [--limit 50]
+```
+
+It reads the source urls from `GET /api/collections/:address/art` (admin;
+`?missing=1` for just the gaps) — the pages hand out `/img/…` paths, so the
+originals are only ever known here. Snapshots are found with one CDX query
+per directory, or one for the longest shared prefix when a drop gave every
+file its own path; bytes are sniffed before import, so a "sorry, this
+bucket is gone" page never becomes somebody's artwork; and each file is
+pinned against the token whose metadata names that url. Nothing chooses a
+target — the chain does.
+
 When the metadata host died too, the collection names nothing at all —
 there is no url to import art against and nothing to hunt. Someone has to
 hand it a cover:
@@ -308,6 +335,11 @@ registry only decides the home page, and which approvals the sponsor pays for.
   hunt walking past a dead url to the pinned archive behind it, an import
   fronting a coverless collection, and the admin key handing a cover to a
   collection that names nothing. Entirely local — no chain, no gateway.
+* `recover-check.js` — recovery from the Wayback Machine, against a
+  stand-in archive: the manifest a rescue works from, a survey that
+  imports nothing, bytes pinned to the right token, a courtesy page
+  refused, and thirty files on thirty paths costing one query.
+  `npm run test:offline` runs both of these without a network.
 * `market-ui.js` — Playwright: home → collection → token → connect modal,
   against live mainnet reads. Needs `PLAYWRIGHT_DIR` and `CHROMIUM`.
 
