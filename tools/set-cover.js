@@ -88,7 +88,18 @@ if (FILE && !fs.existsSync(FILE)) {
     console.error(`${r.status} ${out.error || 'could not update that collection'}`);
     process.exit(1);
   }
-  const c = out.collection || {};
+  /* A site running an older build has no PATCH: the request falls
+     through to the plain GET of that collection and comes back 200 with
+     the row it did NOT change. Silence there would read as success and
+     send someone hunting a cover that was never set — so insist on the
+     answer only the editor gives. */
+  if (!out.ok || !out.collection) {
+    console.error('That site answered, but not as the registry editor — it is running a build');
+    console.error('without PATCH /api/collections/:address. Nothing was changed. Deploy the');
+    console.error('current server.js and run this again.');
+    process.exit(1);
+  }
+  const c = out.collection;
   console.log(`${c.name || ADDR}: cover ${c.image ? `${SITE}${c.image}` : '(cleared — the site will hunt for one)'}`);
   if (DESCRIPTION !== null) console.log(`  description: ${c.description}`);
 })().catch((e) => { console.error(String((e && e.message) || e)); process.exit(1); });
