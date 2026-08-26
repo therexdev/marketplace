@@ -250,7 +250,7 @@ async function collectionView(addr, queryString) {
         <p>${esc((data.meta && data.meta.description) || info.description || '')}</p>
       </div>
       <div class="c-stats">
-        <div class="hstat"><b>${data.orders.length}</b><span>listed</span></div>
+        <div class="hstat"><b>${data.orderBook === 'unavailable' ? '—' : data.orders.length}</b><span>listed</span></div>
         <div class="hstat"><b>${Number(info.totalSupply || 0).toLocaleString('en-US')}</b><span>items</span></div>
         <div class="hstat"><b>${((info.royaltyBps || 0) / 100).toFixed(1)}%</b><span>royalty</span></div>
       </div>
@@ -272,6 +272,16 @@ async function collectionView(addr, queryString) {
         <div id="c-grid"></div>
       </div>
     </div>`;
+
+  /* The order book did not answer. Say so where the count would have
+     been: every listing here is invisible to this page until it does,
+     and a silent zero sends a seller off to re-list what is already
+     for sale. */
+  if (data.orderBook === 'unavailable') {
+    view.querySelector('.c-title').insertAdjacentHTML('beforeend',
+      `<div class="warn">The order book did not answer just now, so listings and prices are
+       missing from this page. Nothing is wrong with your listings — reload in a moment.</div>`);
+  }
 
   /* A collection that deployed but never got named is recoverable, and the
      person looking at it is the one who paid for it — so offer the repair
@@ -463,6 +473,9 @@ async function collectionView(addr, queryString) {
     for (let guard = 0; guard < 25; guard++) {
       const q = await api(`/collections/${addr}/tokens?owner=${me}&status=unlisted&limit=60&offset=${offset}`).catch(() => null);
       if (!q) return;
+      // Without the book, "unlisted" is a guess — never invite a seller to
+      // re-list items this page cannot currently see are already for sale.
+      if (q.orderBook === 'unavailable') return;
       mine.push(...q.tokens);
       if (q.nextOffset == null) break;
       offset = q.nextOffset;

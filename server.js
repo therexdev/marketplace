@@ -1936,9 +1936,17 @@ const api = {
     }
     const reg = registry.collections.find(c => c.address === addr) || null;
     const info = await collectionInfo(addr);
-    // A blinked RPC read of the order book must not take the page down.
-    const orders = await collectionOrders(addr).catch(() => []);
-    json(res, 200, { registered: !!reg, meta: reg ? { ...reg, image: coverUrl(reg) } : null, info, orders });
+    /* A blinked RPC read of the order book must not take the page down —
+       and must not pass for an EMPTY one either. "Nothing is listed" and
+       "we could not ask" are different sentences, and a page that says
+       the first to a seller looking at their own live listing is simply
+       lying. The home snapshot has always kept them apart; these two
+       read paths quietly did not. */
+    const orders = await collectionOrders(addr).catch(() => null);
+    json(res, 200, {
+      registered: !!reg, meta: reg ? { ...reg, image: coverUrl(reg) } : null, info,
+      orders: orders || [], orderBook: orders === null ? 'unavailable' : 'ok',
+    });
   },
 
   /** The browse grid, filtered and sorted across the WHOLE collection.
@@ -1962,8 +1970,9 @@ const api = {
     }
 
     const idx = await collectionIndex(addr);
-    const orders = await collectionOrders(addr).catch(() => []);
-    const listed = new Map(orders.map(o => [o.tokenId, o]));
+    // null, not [] — an unreadable book must not filter as an empty one.
+    const book = await collectionOrders(addr).catch(() => null);
+    const listed = new Map((book || []).map(o => [o.tokenId, o]));
 
     /* "Mine" is just another filter, so it composes with the traits
        instead of being a separate view with its own half of the rules. */
@@ -2023,6 +2032,7 @@ const api = {
       matched: rows.length,
       indexed: idx.total,
       partial: idx.partial,
+      orderBook: book === null ? 'unavailable' : 'ok',
       nextOffset: offset + limit < rows.length ? offset + limit : null,
     });
   },
