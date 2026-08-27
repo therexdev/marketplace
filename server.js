@@ -1216,27 +1216,72 @@ const HOME_FILE = path.join(CFG.DATA_DIR, 'home.json');
 let homeSnap = loadJson(HOME_FILE, null); // { at, collections }
 let homeBuilding = null;
 
+/* When did anything last HAPPEN in a collection? Everything this server
+   can honestly date, newest wins:
+
+     * market events — listed, sold, cancelled — indexed from the chain,
+       so a trade made straight against the contract counts as much as
+       one made here;
+     * mints and launches made through this site;
+     * and, for a collection nothing has happened in yet, the day it was
+       registered, so it sorts by arrival rather than by nothing.
+
+   Mints made OUTSIDE this site are invisible to this: they are events on
+   each NFT contract, and walking every contract's history to order one
+   page is not a trade worth making. Such a collection ranks by its
+   registration until it trades. */
+function activityIndex() {
+  const at = new Map();
+  const mark = (addr, ms) => {
+    const t = Number(ms || 0);
+    if (!addr || !(t > 0)) return;
+    if (!(at.get(addr) >= t)) at.set(addr, t);
+  };
+  for (const e of history.events) mark(e.collection, e.at);
+  for (const m of mints.items) mark(m.collection, m.at);
+  for (const l of launches.items) mark(l.address, l.at);
+  return at;
+}
+
+/* Newest first. A tie keeps the registry's own order, so the sort never
+   shuffles a set of collections that are all equally quiet. */
+const byActivity = (rows) => rows
+  .map((r, i) => [r, i])
+  .sort((a, b) => (b[0].lastActivity || 0) - (a[0].lastActivity || 0) || a[1] - b[1])
+  .map(([r]) => r);
+
 async function buildHome() {
-  return mapPool(registry.collections.slice(), 6, async (c) => {
+  const activity = activityIndex();
+  const rows = await mapPool(registry.collections.slice(), 6, async (c) => {
     const info = await collectionInfo(c.address).catch(() => ({ address: c.address }));
     /* A FAILED order read is not an empty order book. Zeros written
        during one bad minute made every collection say "0 listed" until
        someone asked why — reuse the previous snapshot's numbers when
        the read errs, real zeros only when the chain really says so. */
     const orders = await collectionOrders(c.address).catch(() => null);
-    const prevRow = orders === null && homeSnap
-      ? homeSnap.collections.find((r) => r.address === c.address) : null;
+    const prevRow = homeSnap ? homeSnap.collections.find((r) => r.address === c.address) : null;
     const floor = orders && orders.length
       ? orders.reduce((m, o) => BigInt(o.price) < m ? BigInt(o.price) : m, BigInt(orders[0].price)) : null;
     // No cover chosen? Borrow one from the collection itself — in the
     // background, so an index build never holds up this listing.
     if (!c.image) deriveCover(c.address).catch(() => {});
+    /* The newest LIVE order dates the collection too — the event walk
+       runs on its own clock, and a listing made a minute ago should not
+       have to wait for it to be recent. And a read that failed must not
+       demote a collection to the bottom of the page: keep what the last
+       snapshot knew. */
+    const newestOrder = (orders || []).reduce((m, o) => Math.max(m, Number(o.created || 0)), 0);
     return {
       ...c, ...info,
       listed: orders === null ? (prevRow?.listed ?? 0) : orders.length,
       floor: orders === null ? (prevRow?.floor ?? null) : (floor === null ? null : floor.toString()),
+      lastActivity: Math.max(
+        activity.get(c.address) || 0, newestOrder,
+        Number(c.addedAt) || 0, prevRow?.lastActivity || 0,
+      ),
     };
   });
+  return byActivity(rows);
 }
 
 let homeBuildingAt = 0;
@@ -1863,8 +1908,12 @@ const api = {
       };
       registry.collections.push(row);
       saveJson(REGISTRY_FILE, registry);
-      // Visible on the home page immediately, exact numbers a refresh later.
-      if (homeSnap) homeSnap.collections.push({ ...row, ...info, listed: 0, floor: null });
+      // Visible on the home page immediately, exact numbers a refresh later —
+      // and at the top, since being added IS the collection's latest activity.
+      if (homeSnap) {
+        homeSnap.collections.push({ ...row, ...info, listed: 0, floor: null, lastActivity: row.addedAt });
+        homeSnap.collections = byActivity(homeSnap.collections);
+      }
       refreshHome({ maxAgeMs: 0 }).catch(() => {});
       queueRebuild(addr);
       return json(res, 200, { ok: true, collection: info });
@@ -1888,8 +1937,15 @@ const api = {
       if (!CFG.ADMIN_KEY || key !== CFG.ADMIN_KEY) return json(res, 403, { error: 'the admin key opens this door' });
       const at = registry.collections.findIndex((c) => c.address === addr);
       if (at < 0) return json(res, 404, { error: 'not registered' });
-      const live = await collectionOrders(addr).catch(() => []);
-      if (live.length && !body.force) {
+      /* The guard is "does this collection have live listings?", and a
+         read that FAILED does not answer it. Treating the error as "no
+         listings" quietly turned the safety check into a rubber stamp
+         on exactly the days it mattered. */
+      const live = await collectionOrders(addr).catch(() => null);
+      if (live === null && !body.force) {
+        return json(res, 400, { error: 'The order book did not answer, so whether this collection has live listings is unknown — retry, or pass force:true to unlist it anyway (the orders stay on chain)' });
+      }
+      if (live && live.length && !body.force) {
         return json(res, 400, { error: `${live.length} live listing(s) — cancel them first, or pass force:true to unlist the collection anyway (the orders stay on chain)` });
       }
       registry.collections.splice(at, 1);

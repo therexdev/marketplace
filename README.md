@@ -156,7 +156,16 @@ Nobody waits on the chain or on IPFS anymore:
 
 * the **home page** answers from a snapshot at memory speed; a stale
   snapshot refreshes *behind* the response it just gave (floors lag live
-  trading by a refresh — browsing is constant, buying re-checks on chain);
+  trading by a refresh — browsing is constant, buying re-checks on chain).
+  Collections are ordered by **last activity**, newest first: market
+  events read from the chain (listed, sold, cancelled — so a trade made
+  straight against the contract counts), the newest live order, mints and
+  launches made here, and failing all of those the day the collection was
+  registered. Mints made outside this site are events on each NFT
+  contract, not on the market, and walking every contract's history to
+  order one page is not a trade worth making — such a collection ranks by
+  its registration until it trades. Each row carries `lastActivity` (ms)
+  if a page wants to show it;
 * **collection indexes** are persisted to `DATA_DIR` and served however
   old they are while one background worker rebuilds stale ones — a
   restart begins warm, and the only cold walk left is the first sight of
@@ -317,8 +326,19 @@ curl -X PATCH https://<site>/api/collections/1... \
 
 `image`, `description`, `name` and `featured` are each optional — only the
 fields present in the body change. `"image":null` clears the cover and
-re-arms the automatic hunt. (`DELETE` on the same path takes the
-collection back out of the registry entirely.)
+re-arms the automatic hunt.
+
+Removal is the same key on the same path:
+
+```sh
+curl -X DELETE "https://<site>/api/collections/1...?key=<ADMIN_KEY>"
+```
+
+which unlists it **here only** — tokens, owners and any on-chain orders
+are untouched, and the collection stays reachable at `#/c/<address>`. A
+collection with live listings is refused unless the body carries
+`{"force":true}`; so is one whose order book could not be read at all,
+since "no listings" and "could not ask" are not the same answer.
 
 The address is validated against the chain before it is accepted (it must
 answer as a KCS-2 collection). Aurvania Relics ships in the seed registry;

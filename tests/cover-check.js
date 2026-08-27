@@ -75,6 +75,13 @@ const writeIndex = (addr, tokens) => fs.writeFileSync(
   writeIndex(IMPORTED, [idxRow(3, EXPIRED_URL)]);
   writeIndex(DARK, [idxRow(1, null), idxRow(2, null)]);  // metadata dead: labels, no art
 
+  /* Something happened in the OLDEST-registered collection five minutes
+     ago. The home page ranks by activity, so that is where it belongs —
+     ahead of two collections registered after it where nothing has. */
+  fs.writeFileSync(path.join(dataDir, 'mints.json'), JSON.stringify({
+    items: [{ at: Date.now() - 300000, collection: RESCUED, tokenId: '0x01', owner: null }],
+  }));
+
   /* One artwork already imported, pinned under the url its metadata
      names — the archive a dead host leaves behind. */
   const key = crypto.createHash('sha256').update(PINNED_URL).digest('hex');
@@ -130,6 +137,12 @@ const writeIndex = (addr, tokens) => fs.writeFileSync(
   /* ---- 2. nothing is invented for a collection that names nothing ---- */
   check('a collection whose metadata died is given no cover it never had',
     (await rowOf(DARK)).image === '', JSON.stringify(await rowOf(DARK)));
+
+  /* ---- the page leads with whatever happened most recently ---- */
+  const order = ((await api('/api/collections')).body.collections || []).map((c) => c.address);
+  check('the home page leads with the most recently active collection',
+    order.join(',') === [RESCUED, DARK, IMPORTED].join(','),
+    order.map((a) => a.slice(0, 6)).join(' > '));
 
   /* ---- 3. an import fronts a coverless collection with what it brought ---- */
   const imp = await fetch(
