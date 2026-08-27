@@ -1308,6 +1308,43 @@ document.addEventListener('error', (e) => {
   }
 }, true);
 
+/* Google One Tap on landing. A returning visitor already signed into Google
+   (and who has used this wallet before) gets a "Continue as …" chip and is one
+   tap from their wallet — no Connect modal needed. FedCM is required now that
+   Chrome restricts third-party cookies; without it the chip silently never
+   shows (the reason this app originally shipped button-only). NOT auto_select:
+   OURO holds funds, so a live wallet should follow a deliberate tap, not merely
+   opening the tab. The rendered button in Connect stays the guaranteed way in. */
+function googleOneTap() {
+  const cid = Wallet.cfg && Wallet.cfg.googleClientId;
+  if (!cid || Wallet.account) return;
+  let waited = 0;
+  (function awaitGsi() {
+    if (Wallet.account) return;                    // signed in while we waited
+    if (window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: cid,
+          use_fedcm_for_prompt: true,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          callback: async (resp) => {
+            try {
+              await Wallet.hostedLogin({ action: 'google', idToken: resp.credential });
+              toast('Signed in — same wallet as Aurvania', 'good');
+            } catch (e) { toast(esc(e.message), 'bad'); }
+          },
+        });
+        try { window.google.accounts.id.prompt(); }
+        catch (_) { /* suppressed / cooldown — the Connect button still works */ }
+      } catch (e) { console.warn('One Tap failed to start', e); }
+      return;
+    }
+    if ((waited += 150) > 8000) return;            // GSI never landed — button-only, as before
+    setTimeout(awaitGsi, 150);
+  })();
+}
+
 (async () => {
   const cfg = await Wallet.init();
   $('#foot-market').textContent = cfg.market
@@ -1315,6 +1352,7 @@ document.addEventListener('error', (e) => {
     : 'contract not deployed yet';
   paintHeader();
   Wallet.onChange(() => { paintHeader(); route(); });
+  if (!Wallet.account) googleOneTap();
   $('#btn-connect').onclick = () => (Wallet.account ? walletModal() : connectModal());
   $('#btn-me').onclick = () => { location.hash = '#/me'; };
   /* The phone-width popout. Any navigation closes it — including the
