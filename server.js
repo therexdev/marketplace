@@ -30,7 +30,7 @@
      SPONSOR_RC_PER_OP  mana ceiling per operation in satoshis (default 3 KOIN)
      SPONSOR_RC_MAX     absolute per-tx mana ceiling (default 15 KOIN)
      INDEX_MAX_TOKENS   how deep a collection is indexed for filters (default 1500)
-     AURVANIA_API       game server for shared sign-in (default aurvania.quest)
+     AURVANIA_API       game server for shared sign-in (default aurvania.com)
      ADMIN_KEY          enables POST /api/collections (registry writes)
    ============================================================ */
 'use strict';
@@ -111,12 +111,12 @@ const CFG = {
      not a charge — only rc_used leaves the payer. */
   SPONSOR_RC_PER_OP: bigEnv('SPONSOR_RC_PER_OP', 3e8),
   SPONSOR_RC_MAX: bigEnv('SPONSOR_RC_MAX', 15e8),
-  AURVANIA_API: (process.env.AURVANIA_API || 'https://aurvania.quest').replace(/\/$/, ''),
+  AURVANIA_API: (process.env.AURVANIA_API || 'https://aurvania.com').replace(/\/$/, ''),
   /* Optional: the same Google OAuth client the game uses. Set it here and
      sign-in no longer waits on the game server being reachable. */
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
   /* How this server introduces itself to the game. The host in front of
-     aurvania.quest answers 403 to almost every User-Agent — a browser
+     aurvania.com answers 403 to almost every User-Agent — a browser
      string, an empty one, node's own, a plain product token — and passes
      `curl/*` and `Wget/*`. Measured, not guessed. The prefix clears that
      filter while the rest keeps the caller identifiable in the game's
@@ -410,7 +410,7 @@ const rewriteImg = (u) => {
      in their on-chain metadata — immutable history. Rewriting here keeps
      the art loading directly (no redirect hop) and keeps working on the
      day koinoscrusaders.com finally lapses. */
-  u = u.replace(/^https?:\/\/(www\.)?koinoscrusaders\.com\//, 'https://aurvania.quest/');
+  u = u.replace(/^https?:\/\/(www\.)?(koinoscrusaders\.com|aurvania\.quest)\//, 'https://aurvania.com/');
   return /^https:\/\//.test(u) ? u : null;
 };
 

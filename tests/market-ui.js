@@ -61,7 +61,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const t = setTimeout(() => resolve(false), 8000);
     i.onload = () => { clearTimeout(t); resolve(true); };
     i.onerror = () => { clearTimeout(t); resolve(false); };
-    i.src = 'https://aurvania.quest/assets/img/icon-192.png?probe=' + Math.random();
+    i.src = 'https://aurvania.com/assets/img/icon-192.png?probe=' + Math.random();
   }));
 
   const RELICS = '1E8hw3NiDPz9gcZ8BiWoTHzFz4H48dpFKq';

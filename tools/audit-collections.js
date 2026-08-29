@@ -87,7 +87,7 @@ function ipfsRoots(base) {
 const rewriteImg = (u) => {
   if (typeof u !== 'string') return null;
   if (u.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + u.slice(7);
-  u = u.replace(/^https?:\/\/(www\.)?koinoscrusaders\.com\//, 'https://aurvania.quest/');
+  u = u.replace(/^https?:\/\/(www\.)?(koinoscrusaders\.com|aurvania\.quest)\//, 'https://aurvania.com/');
   return /^https:\/\//.test(u) ? u : null;
 };
 /* === end of the server.js mirror === */

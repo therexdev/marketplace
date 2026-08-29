@@ -73,7 +73,7 @@ MARKET_ADDR=<deployed address> KOINOS_DEV_WIF=<dev wif> node server.js
 | `SPONSOR_RC_PER_OP` | mana ceiling **per operation** in satoshis (default 3 KOIN) |
 | `SPONSOR_RC_MAX` | absolute per-transaction mana ceiling (default 15 KOIN) |
 | `INDEX_MAX_TOKENS` | how deep a collection is indexed for filters (default 1500) |
-| `AURVANIA_API` | sign-in bridge target (default `https://aurvania.quest`) |
+| `AURVANIA_API` | sign-in bridge target (default `https://aurvania.com`) |
 | `GOOGLE_CLIENT_ID` | the game's Google OAuth client id — set it so sign-in does not depend on the bridge being reachable |
 | `BRIDGE_UA` | User-Agent used when calling the game (default clears its host's filter) |
 | `ADMIN_KEY` | privileged registry fields (`featured`) — adding collections needs no key |
@@ -90,7 +90,7 @@ MARKET_ADDR=<deployed address> KOINOS_DEV_WIF=<dev wif> node server.js
 `POST /api/account` forwards `register` / `login` / `google` to the Aurvania
 server, which answers with the **same WIF/address** the same identity gets in
 the game. Proven end-to-end in the test suite: register through the
-marketplace, log in at aurvania.quest, same address. For Google sign-in the
+marketplace, log in at aurvania.com, same address. For Google sign-in the
 marketplace's domain must be added to the OAuth client's **authorized
 JavaScript origins** in the Google console.
 
@@ -99,7 +99,7 @@ reach the game — the question worth asking first when sign-in misbehaves.
 `?ua=…` retries with a different User-Agent from the server itself, which is
 how the header below was found.
 
-One hard-won detail: the host in front of aurvania.quest answers **403** to
+One hard-won detail: the host in front of aurvania.com answers **403** to
 most User-Agents — an empty one, node's default `node`, a full Chrome
 string, `python-requests`, `axios`, a plain product token — and lets
 `curl/*` and `Wget/*` through. Nothing reaches the game's app to explain
