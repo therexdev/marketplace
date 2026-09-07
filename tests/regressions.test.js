@@ -228,3 +228,20 @@ test('warm grids keep browsing while an order-book refresh is stalled', async ()
     assert.ok(performance.now() - start < 500);
   } finally { release(); await app.close(); }
 });
+
+
+test('an old index with blank art still exposes the live token image endpoint', async () => {
+  let release;
+  const gate = new Promise(r => { release = r; });
+  const app = await harness({ chain: async (_, method) => { if (method === 'get_tokens') await gate; } });
+  try {
+    fs.writeFileSync(path.join(app.dataDir, 'index', PAINT + '.json'), JSON.stringify({
+      at: Date.now(), value: { tokens: [{ tokenId: TOKEN, label: 'DK00001', name: 'Purple Dot', image: null, traits: {} }], facets: [], total: 1, partial: false },
+    }));
+    const grid = await get(app, `/api/collections/${PAINT}/tokens`);
+    assert.equal(grid.tokens[0].image, `/img/t/${PAINT}/${TOKEN}`);
+    const art = await fetch(app.base + grid.tokens[0].image);
+    assert.equal(art.status, 200);
+    assert.equal(await art.text(), dataImage(paint.image).bytes.toString());
+  } finally { release(); await app.rebuildIndex(PAINT); await app.close(); }
+});

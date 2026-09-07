@@ -1968,8 +1968,13 @@ const api = {
     }
 
     json(res, 200, {
+      // An old index can have a blank image even when the token's current
+      // metadata contains valid artwork (e.g. embedded SVG). Let the lazy
+      // image endpoint resolve that token without waiting for a full rebuild.
       tokens: rows.slice(offset, offset + limit).map(t => ({
-        tokenId: t.tokenId, label: t.label, name: t.name, image: artUrl(addr, t.tokenId, t.image), order: t.order,
+        tokenId: t.tokenId, label: t.label, name: t.name,
+        image: artUrl(addr, t.tokenId, t.image) || `/img/t/${addr}/${t.tokenId}`,
+        order: t.order,
       })),
       matched: rows.length,
       indexed: idx.total,
