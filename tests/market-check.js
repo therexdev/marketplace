@@ -56,8 +56,15 @@ process.on('exit', () => { try { srv && srv.kill(); } catch (_) {} });
   }
 
   const api = async (p, opts) => {
-    const r = await fetch(`http://127.0.0.1:${PORT}${p}`, opts);
-    return { status: r.status, body: await r.json().catch(() => ({})) };
+    // Cold browse endpoints now return immediately while the index builds.
+    // These live integration assertions need the eventual complete page.
+    const until = Date.now() + 180000;
+    for (;;) {
+      const r = await fetch(`http://127.0.0.1:${PORT}${p}`, opts);
+      const body = await r.json().catch(() => ({}));
+      if (!body.loading || opts?.method || Date.now() >= until) return { status: r.status, body };
+      await sleep(1500);
+    }
   };
 
   /* ---- surface ---- */

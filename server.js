@@ -39,6 +39,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { Worker } = require('worker_threads');
+const { dataImage, ipfsRoots, normalizeImage: rewriteImg, metadataImage, firstAvailable, limitedBody } = require('./lib/media');
 const { Signer, Provider, Contract, Transaction, Serializer, utils } = require('koilib');
 
 /* A background chain walk, a stray rejection, a bad response shape — none
@@ -177,13 +179,15 @@ const provider = new Provider(RPCS);
    A hung call now REJECTS after 25s and every caller already handles
    rejection; the workers keep working. */
 const rawProviderCall = provider.call.bind(provider);
-const timedCall = (method, params) => Promise.race([
-  rawProviderCall(method, params),
-  new Promise((_, reject) => {
-    const t = setTimeout(() => reject(new Error(`rpc timeout: ${method}`)), 25000);
-    if (t.unref) t.unref();
-  }),
-]);
+const timedCall = async (method, params) => {
+  let timer;
+  try {
+    return await Promise.race([
+      rawProviderCall(method, params),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`rpc timeout: ${method}`)), 25000); timer.unref(); }),
+    ]);
+  } finally { clearTimeout(timer); }
+};
 /* READS also retry: the node intermittently answers with a Cloudflare
    HTML page or times out, and a single dropped read was becoming a
    wrong answer somewhere ("0 listed", a token without traits).
@@ -231,18 +235,21 @@ function nftC(addr) {
 /* ---------------- caches ---------------- */
 
 const caches = new Map();
+const cacheBusy = new Map();
 async function cached(key, ttlMs, fn) {
   const hit = caches.get(key);
-  const t = Date.now();
-  if (hit && t - hit.at < ttlMs) return hit.value;
-  const value = await fn();
-  caches.set(key, { at: t, value });
-  if (caches.size > 5000) {
-    // drop the oldest half rather than tracking LRU precisely
-    const entries = [...caches.entries()].sort((a, b) => a[1].at - b[1].at);
-    for (let i = 0; i < entries.length / 2; i++) caches.delete(entries[i][0]);
-  }
-  return value;
+  if (hit && Date.now() - hit.at < ttlMs) return hit.value;
+  if (cacheBusy.has(key)) return cacheBusy.get(key);
+  const run = Promise.resolve().then(fn).then(value => {
+    caches.set(key, { at: Date.now(), value });
+    if (caches.size > 5000) {
+      const entries = [...caches.entries()].sort((a, b) => a[1].at - b[1].at);
+      for (let i = 0; i < entries.length / 2; i++) caches.delete(entries[i][0]);
+    }
+    return value;
+  }).finally(() => cacheBusy.delete(key));
+  cacheBusy.set(key, run);
+  return run;
 }
 
 const isAddr = (s) => typeof s === 'string' && /^1[1-9A-HJ-NP-Za-km-z]{25,34}$/.test(s);
@@ -267,17 +274,17 @@ async function collectionInfo(addr) {
       if (result) { out.name = result.name; out.symbol = result.symbol; out.uri = result.uri; out.description = result.description; }
     } catch (_) {
       // KCS-2 without get_info: fall back to the individual getters.
-      try { out.name = (await c.functions.name({})).result?.value; } catch (_) {}
-      try { out.symbol = (await c.functions.symbol({})).result?.value; } catch (_) {}
-      try { out.uri = (await c.functions.uri({})).result?.value; } catch (_) {}
+      await Promise.all(['name', 'symbol', 'uri'].map(async field => {
+        try { out[field] = (await c.functions[field]({})).result?.value; } catch (_) {}
+      }));
     }
-    try { out.totalSupply = (await c.functions.total_supply({})).result?.value || '0'; } catch (_) {}
-    // Who may mint into it — the answer the Create page needs.
-    try { out.owner = (await c.functions.owner({})).result?.value || null; } catch (_) { out.owner = null; }
-    try {
-      const { result } = await c.functions.royalties({});
-      out.royaltyBps = (result?.value || []).reduce((s, r) => s + Number(r.percentage || 0), 0);
-    } catch (_) { out.royaltyBps = 0; }
+    const [supply, owner, royalties] = await Promise.allSettled([
+      c.functions.total_supply({}), c.functions.owner({}), c.functions.royalties({}),
+    ]);
+    if (supply.status === 'fulfilled') out.totalSupply = supply.value.result?.value || '0';
+    out.owner = owner.status === 'fulfilled' ? owner.value.result?.value || null : null;
+    out.royaltyBps = royalties.status === 'fulfilled'
+      ? (royalties.value.result?.value || []).reduce((sum, r) => sum + Number(r.percentage || 0), 0) : 0;
     /* Kollection-era contracts (no get_tokens) declared royalties per
        100,000 — The Crew's "5000" paid 5% on real Kollection sales, not
        50%. Normalize to basis points so every display and fee breakdown
@@ -291,7 +298,12 @@ async function collectionInfo(addr) {
   });
 }
 
-async function collectionOrders(addr) {
+async function collectionOrders(addr, { browse = false } = {}) {
+  const remembered = caches.get('orders:' + addr);
+  if (browse && remembered) {
+    collectionOrders(addr).catch(() => {});
+    return remembered.value.filter(o => !Number(o.expires) || Number(o.expires) > Date.now());
+  }
   if (!marketC) return [];
   return cached('orders:' + addr, 10000, async () => {
     const rows = [];
@@ -330,13 +342,42 @@ function parseMeta(text) {
     Successes keep for an hour; a MISS keeps for two minutes — one bad
     gateway moment cached as "no metadata" for an hour was starving
     every retry of the art importer and every index rebuild. */
+const META_DIR = path.join(CFG.DATA_DIR, 'metadata');
+fs.mkdirSync(META_DIR, { recursive: true });
+const metaBusy = new Map();
+// These are previously verified, per-token references, never a generated mapping.
+// They recover the sampled legacy NFTs even if their metadata gateway is down.
+const auditedMeta = new Map();
+const audit = loadJson(path.join(__dirname, 'data', 'audit', 'results.json'), {});
+for (const c of (Array.isArray(audit) ? audit : audit.rows || [])) {
+  for (const t of c.sampleTokens || []) {
+    if (t.hasMeta && t.image && t.label != null) {
+      const id = '0x' + Buffer.from(String(t.label)).toString('hex');
+      auditedMeta.set(`${c.address}:${id}`, { name: t.name, image: t.image });
+    }
+  }
+}
 async function tokenMeta(addr, tokenIdHex) {
   const key = `meta:${addr}:${tokenIdHex}`;
-  const hit = caches.get(key);
+  const diskFile = path.join(META_DIR, imgKey(key) + '.json');
+  let hit = caches.get(key);
+  if (!hit) {
+    hit = loadJson(diskFile, null);
+    if (hit?.value) caches.set(key, hit);
+  }
   if (hit && Date.now() - hit.at < (hit.value === null ? 120000 : 3600000)) return hit.value;
-  const value = await tokenMetaFetch(addr, tokenIdHex);
-  caches.set(key, { at: Date.now(), value });
-  return value;
+  const fallback = hit?.value || auditedMeta.get(`${addr}:${tokenIdHex}`) || null;
+  if (!metaBusy.has(key)) {
+    const run = tokenMetaFetch(addr, tokenIdHex).then(value => {
+      const rec = { at: Date.now(), value: value || fallback };
+      caches.set(key, rec);
+      if (value) saveJson(diskFile, rec);
+      return rec.value;
+    }).catch(() => fallback).finally(() => metaBusy.delete(key));
+    metaBusy.set(key, run);
+  }
+  // Previously resolved art stays available while its metadata refreshes.
+  return fallback || metaBusy.get(key);
 }
 async function tokenMetaFetch(addr, tokenIdHex) {
   const c = nftC(addr);
@@ -355,64 +396,26 @@ async function tokenMetaFetch(addr, tokenIdHex) {
      giving up. The combination that answers first is remembered per
      collection, so an index walk pays the discovery timeouts once, not
      sixty times. */
-  const roots = ipfsRoots(base) || [base];
-  const names = [encodeURIComponent(hexToLabel(tokenIdHex)), tokenIdHex.toLowerCase()];
-  const combos = [];
-  for (const root of roots) for (const name of names) combos.push({ root, name, idx: combos.length });
+  const roots = [...new Set([...(ipfsRoots(base) || []), ...(base.startsWith('http') ? [base] : [])])];
+  const labels = [encodeURIComponent(hexToLabel(tokenIdHex)), tokenIdHex.toLowerCase()];
+  if (indexPeek(addr)?.value?.scheme === 'legacy') labels.reverse();
+  const names = [...new Set(labels)];
   const hint = metaPathHints.get(addr);
-  if (hint != null && hint > 0 && hint < combos.length) {
-    combos.unshift(combos.splice(hint, 1)[0]);
-  }
-  for (const c of combos) {
-    try {
-      const r = await fetch(`${c.root.replace(/\/$/, '')}/${c.name}`, { signal: AbortSignal.timeout(8000), size: 1048576 });
-      if (!r.ok) continue;
-      const text = (await r.text()).slice(0, 262144);
-      const parsed = parseMeta(text);
-      if (!parsed) continue;
-      metaPathHints.set(addr, c.idx);
+  if (hint && names.includes(hint)) { names.splice(names.indexOf(hint), 1); names.unshift(hint); }
+  // Prefer the known filename; gateways race within one bounded attempt.
+  for (const name of names) {
+    const result = await firstAvailable(roots.map(root => `${root.replace(/\/$/, '')}/${name}`), async (url, signal) => {
+      const r = await fetch(url, { signal });
+      const parsed = parseMeta((await limitedBody(r, 262144)).toString('utf8'));
+      if (!parsed) throw new Error('not metadata');
       return parsed;
-    } catch (_) {}
+    });
+    if (result) { metaPathHints.set(addr, name); return result; }
   }
   return null;
-
-}
-const metaPathHints = new Map(); // collection -> canonical index of the combo that answered
-
-/** Anything carrying a CID — ipfs:// uris, subdomain-gateway urls like
-    …cid.ipfs.nftstorage.link (that host is dead, its CIDs sometimes are
-    not) — re-rooted onto gateways that still answer. Returns null when
-    the url carries no CID and should be fetched as-is. */
-function ipfsRoots(base) {
-  let cid = null, sub = '';
-  let m = /^ipfs:\/\/([^/]+)\/?(.*)$/.exec(base);
-  if (m) { cid = m[1]; sub = m[2]; }
-  if (!cid) {
-    m = /^https?:\/\/([a-z0-9]{46,})\.ipfs\.[^/]+\/?(.*)$/i.exec(base);
-    if (m) { cid = m[1]; sub = m[2]; }
-  }
-  if (!cid) {
-    m = /^https?:\/\/[^/]+\/ipfs\/([a-zA-Z0-9]{40,})\/?(.*)$/.exec(base);
-    if (m) { cid = m[1]; sub = m[2]; }
-  }
-  if (!cid) return null;
-  // Some uris embed a second, path-style /ipfs/<cid>/ — re-root there.
-  const inner = /^ipfs\/([a-zA-Z0-9]{40,})\/?(.*)$/.exec(sub);
-  if (inner) { cid = inner[1]; sub = inner[2]; }
-  const tail = sub ? '/' + sub.replace(/\/$/, '') : '';
-  return ['https://ipfs.io/ipfs/' + cid + tail, 'https://dweb.link/ipfs/' + cid + tail];
 }
 
-const rewriteImg = (u) => {
-  if (typeof u !== 'string') return null;
-  if (u.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + u.slice(7);
-  /* Aurvania relics minted before the domain move carry the RETIRED domain
-     in their on-chain metadata — immutable history. Rewriting here keeps
-     the art loading directly (no redirect hop) and keeps working on the
-     day koinoscrusaders.com finally lapses. */
-  u = u.replace(/^https?:\/\/(www\.)?(koinoscrusaders\.com|aurvania\.quest)\//, 'https://aurvania.com/');
-  return /^https:\/\//.test(u) ? u : null;
-};
+const metaPathHints = new Map(); // collection -> filename convention that answered
 
 /* ---------------- the art cache ----------------
 
@@ -457,10 +460,10 @@ const localUpload = (u) => {
 const artUrl = (addr, tokenId, image) =>
   !image ? null : localUpload(image) || `/img/t/${addr}/${tokenId}`;
 const coverUrl = (row) =>
-  !row || !row.image ? '' : localUpload(row.image) || `/img/c/${row.address}`;
+  !row ? '' : localUpload(row.image) || `/img/c/${row.address}`;
 
 const imgKey = (src) => crypto.createHash('sha256').update(src).digest('hex');
-const imgDead = new Map();     // key -> when the last hunt failed (retried after 10 min)
+const imgDead = new Map();     // key -> when the last hunt failed (retried after two minutes)
 const imgBusy = new Map();     // key -> in-flight fetch, so a grid asks once
 let imgFetching = 0;           // upstream fetches in flight, across all keys
 
@@ -475,34 +478,31 @@ async function fetchArt(src) {
   const failedAt = imgDead.get(key);
   if (failedAt && Date.now() - failedAt < 120000) return null;
   if (imgBusy.has(key)) return imgBusy.get(key);
+  const embedded = dataImage(src);
+  if (embedded) {
+    fs.writeFileSync(file, embedded.bytes);
+    saveJson(file + '.json', { type: embedded.type, size: embedded.bytes.length, at: Date.now() });
+    return { file, type: embedded.type };
+  }
   const run = (async () => {
     /* A cold grid must not open one upstream connection per tile. */
-    while (imgFetching >= 6) await new Promise((r) => setTimeout(r, 150));
+    while (imgFetching >= 2) await new Promise((r) => setTimeout(r, 150));
     imgFetching++;
     try {
       const tries = [...new Set([src, ...(ipfsRoots(src) || [])])];
-      for (const u of tries) {
-        try {
-          const r = await fetch(u, { signal: AbortSignal.timeout(12000) });
-          if (!r.ok) continue;
-          const chunks = [];
-          let size = 0, over = false;
-          for await (const chunk of r.body) {
-            size += chunk.length;
-            if (size > IMG_FILE_MAX) { over = true; break; }
-            chunks.push(chunk);
-          }
-          if (over) break; // the same bytes wait on every gateway — give up whole
-          const buf = Buffer.concat(chunks);
-          const claimed = r.headers.get('content-type') || '';
-          const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
-          if (!/^image\//.test(claimed) && !sniffed) continue;
-          const type = sniffed ? sniffed[1] : claimed.split(';')[0];
-          fs.writeFileSync(file, buf);
-          saveJson(file + '.json', { type, src, size: buf.length, at: Date.now() });
-          imgDead.delete(key);
-          return { file, type };
-        } catch (_) {}
+      const got = await firstAvailable(tries, async (url, signal) => {
+        const r = await fetch(url, { signal });
+        const buf = await limitedBody(r, IMG_FILE_MAX);
+        const claimed = r.headers.get('content-type') || '';
+        const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
+        if (!buf.length || (!/^image\//.test(claimed) && !sniffed)) throw new Error('not an image');
+        return { buf, type: sniffed ? sniffed[1] : claimed.split(';')[0] };
+      }, 10000);
+      if (got) {
+        fs.writeFileSync(file, got.buf);
+        saveJson(file + '.json', { type: got.type, src, size: got.buf.length, at: Date.now() });
+        imgDead.delete(key);
+        return { file, type: got.type };
       }
       imgDead.set(key, Date.now());
       return null;
@@ -528,29 +528,31 @@ const THUMB_W = 480;
 const thumbBusy = new Map();
 let thumbsCutting = 0;
 async function thumbOf(file, type) {
-  if (!Jimp || type === 'image/svg+xml') return null;
+  if (!Jimp || ['image/svg+xml', 'image/gif', 'image/webp'].includes(type)) return null;
   let stat;
   try { stat = fs.statSync(file); } catch (_) { return null; }
   if (stat.size < 96 * 1024) return null; // already lighter than a thumb would be
   const tf = `${file}.w${THUMB_W}`;
   if (fs.existsSync(tf + '.json')) {
     const m = loadJson(tf + '.json', null);
-    if (m && fs.existsSync(tf)) return m.skip ? null : { file: tf, type: m.type };
+    if (m?.skip) return null;
+    if (m && fs.existsSync(tf)) return { file: tf, type: m.type };
   }
   if (thumbBusy.has(file)) return thumbBusy.get(file);
   const run = (async () => {
     try {
       while (thumbsCutting >= 2) await new Promise((r) => setTimeout(r, 100));
       thumbsCutting++;
-      const img = await Jimp.fromBuffer(fs.readFileSync(file));
-      if (img.width > THUMB_W) img.resize({ w: THUMB_W });
-      /* JPEG unless transparency is actually IN USE — art on a dark
-         page with a quietly blackened backdrop looks broken. */
-      let alpha = false;
-      const px = img.bitmap.data;
-      for (let i = 3; i < px.length && !alpha; i += 64) alpha = px[i] < 250;
-      const outType = alpha ? 'image/png' : 'image/jpeg';
-      const out = await img.getBuffer(outType, { quality: 80 });
+      const rendered = await new Promise((resolve, reject) => {
+        const worker = new Worker(path.join(__dirname, 'lib', 'thumbnail-worker.js'));
+        const timer = setTimeout(() => { worker.terminate(); reject(new Error('thumbnail timeout')); }, 15000);
+        const finish = () => { clearTimeout(timer); worker.terminate(); };
+        worker.once('message', msg => { finish(); msg.error ? reject(new Error(msg.error)) : resolve(msg); });
+        worker.once('error', e => { finish(); reject(e); });
+        worker.once('exit', code => { clearTimeout(timer); if (code !== 0) reject(new Error('thumbnail worker exited')); });
+        worker.postMessage({ file, width: THUMB_W });
+      });
+      const out = Buffer.from(rendered.bytes), outType = rendered.type;
       if (out.length >= stat.size) {
         saveJson(tf + '.json', { skip: true, at: Date.now() });
         return null;
@@ -571,14 +573,13 @@ async function serveArt(req, res, src, cacheSeconds, wantThumb) {
      same art. A cover an admin re-points gets a new etag by construction. */
   const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W : ''}"`;
   if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
-  const got = await fetchArt(src).catch(() => null);
+  let deadline;
+  const got = await Promise.race([
+    fetchArt(src).catch(() => null),
+    new Promise(resolve => { deadline = setTimeout(() => resolve(null), 12000); }),
+  ]).finally(() => clearTimeout(deadline));
   if (!got) {
-    /* We could not produce the bytes — a gateway flaking, or this url
-       resting in the negative cache after a failed burst. Hand the
-       browser the SOURCE url instead of a broken tile: a different
-       network path that often succeeds, and at worst exactly the
-       direct load every page did before the cache existed. */
-    res.writeHead(302, { 'Location': src, 'Cache-Control': 'no-store' });
+    res.writeHead(503, { 'Cache-Control': 'no-store', 'Retry-After': '15' });
     return res.end();
   }
   const variant = (wantThumb && await thumbOf(got.file, got.type).catch(() => null)) || got;
@@ -586,6 +587,8 @@ async function serveArt(req, res, src, cacheSeconds, wantThumb) {
     'Content-Type': variant.type || 'application/octet-stream',
     'Cache-Control': `public, max-age=${cacheSeconds}`,
     'ETag': tag,
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
   });
   fs.createReadStream(variant.file).pipe(res);
 }
@@ -600,11 +603,12 @@ async function serveTokenArt(req, res, addr, tokenId, wantThumb) {
   // Unknown to the index, or indexed while its metadata was missing —
   // ask the metadata directly rather than 404ing on a stale blank.
   const meta = await tokenMeta(addr, tokenId).catch(() => null);
-  return serveArt(req, res, rewriteImg(meta?.image), 86400, wantThumb);
+  return serveArt(req, res, metadataImage(meta), 86400, wantThumb);
 }
 
 async function serveCoverArt(req, res, addr, wantThumb) {
   const row = registry.collections.find((c) => c.address === addr);
+  if (row && !row.image) await deriveCover(addr);
   return serveArt(req, res, rewriteImg(row?.image), 3600, wantThumb);
 }
 
@@ -614,6 +618,7 @@ async function serveCoverArt(req, res, addr, wantThumb) {
 function pinArt(src, buf, type) {
   const key = imgKey(src);
   const file = path.join(IMG_DIR, key);
+  for (const suffix of [`.w${THUMB_W}`, `.w${THUMB_W}.json`]) { try { fs.unlinkSync(file + suffix); } catch (_) {} }
   fs.writeFileSync(file, buf);
   saveJson(file + '.json', { type, src, size: buf.length, at: Date.now(), pinned: true });
   imgDead.delete(key);
@@ -704,14 +709,26 @@ function indexPeek(addr) {
     const disk = loadJson(path.join(IDX_DIR, addr + '.json'), null);
     if (disk && disk.value) { hit = disk; idxMem.set(addr, hit); }
   }
+  if (hit && hit.value.version !== 2 && !hit.recovered) {
+    hit.recovered = true;
+    for (const t of hit.value.tokens || []) {
+      if (t.image) continue;
+      const meta = auditedMeta.get(`${addr}:${t.tokenId}`);
+      if (meta) { t.image = metadataImage(meta); t.name = meta.name || t.name; }
+    }
+  }
   return hit || null;
 }
 
-async function collectionIndex(addr) {
+async function collectionIndex(addr, { browse = false } = {}) {
   const hit = indexPeek(addr);
   if (hit) {
-    if (Date.now() - hit.at > INDEX_TTL_MS) queueRebuild(addr);
+    if (Date.now() - hit.at > INDEX_TTL_MS || hit.value.version !== 2) queueRebuild(addr);
     return hit.value;
+  }
+  if (browse) {
+    queueRebuild(addr);
+    return { tokens: [], facets: [], total: 0, partial: true, loading: true };
   }
   return rebuildIndex(addr);
 }
@@ -720,9 +737,10 @@ async function collectionIndex(addr) {
    stale together (every restart) must refresh one at a time, not as
    nineteen simultaneous 1500-token walks against the same RPC. */
 const idxQueue = [];
+const idxRetryAt = new Map();
 let idxWorkers = 0;
 function queueRebuild(addr) {
-  if (idxBuilding.has(addr) || idxQueue.includes(addr)) return;
+  if (idxBuilding.has(addr) || idxQueue.includes(addr) || Date.now() < (idxRetryAt.get(addr) || 0)) return;
   /* A collection with NOTHING to show outranks a routine refresh of a
      healthy one — a storm recovery must not wait behind polish. */
   const broken = !(indexPeek(addr)?.value?.tokens || []).length;
@@ -730,7 +748,7 @@ function queueRebuild(addr) {
   /* Two workers: one storm-recovery pass over twenty collections took
      the better part of an hour single-file, which reads as "broken"
      from outside. Two is still gentle on the RPC. */
-  while (idxWorkers < 2 && idxQueue.length > idxWorkers) {
+  while (idxWorkers < 2 && idxQueue.length > 0) {
     idxWorkers++;
     (async () => {
       try {
@@ -756,6 +774,9 @@ function rebuildIndex(addr) {
       }
       saveJson(path.join(IDX_DIR, addr + '.json'), rec);
       return value;
+    } catch (e) {
+      idxRetryAt.set(addr, Date.now() + 30000);
+      throw e;
     } finally { idxBuilding.delete(addr); }
   })();
   idxBuilding.set(addr, run);
@@ -880,7 +901,7 @@ async function buildCollectionIndex(addr) {
     return {
       tokenId: tid, label: hexToLabel(tid),
       name: meta?.name || hexToLabel(tid),
-      image: rewriteImg(meta?.image),
+      image: metadataImage(meta),
       traits: traitsOf(meta),
       owner: ownerAt.get(tid),
     };
@@ -913,7 +934,7 @@ async function buildCollectionIndex(addr) {
           tokens[at] = {
             tokenId: tid, label: hexToLabel(tid),
             name: meta.name || hexToLabel(tid),
-            image: rewriteImg(meta.image),
+            image: metadataImage(meta),
             traits: traitsOf(meta),
             owner: ownerAt.get(tid),
           };
@@ -945,7 +966,7 @@ async function buildCollectionIndex(addr) {
     .filter(f => f.values.length > 1 || f.total < tokens.length)
     .sort((a, b) => b.values.length - a.values.length || a.trait.localeCompare(b.trait));
 
-  return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length, scheme };
+  return { tokens, facets, total: tokens.length, partial: partial || ids.length > capped.length, scheme, version: 2 };
 }
 
 /* ---------------- trade history ----------------
@@ -1614,25 +1635,23 @@ async function deriveCover(addr) {
     const orders = await collectionOrders(addr).catch(() => []);
     if (orders.length) {
       const newest = orders.reduce((a, b) => (Number(b.created || 0) > Number(a.created || 0) ? b : a));
-      img = rewriteImg(((await tokenMeta(addr, newest.tokenId).catch(() => null)) || {}).image);
+      img = metadataImage(await tokenMeta(addr, newest.tokenId).catch(() => null));
     }
     if (!img) {
-      const idx = await collectionIndex(addr).catch(() => null);
-      const toks = (idx && idx.tokens) || [];
+      const peek = indexPeek(addr);
+      const toks = peek?.value?.tokens || [];
       for (let i = toks.length - 1; i >= 0 && !img; i--) img = toks[i].image;
+      if (!img) {
+        let tid = toks.at(-1)?.tokenId;
+        if (!tid) {
+          try { tid = (await nftC(addr).functions.get_tokens({ limit: 1, descending: true })).result?.token_ids?.[0]; }
+          catch (_) {}
+        }
+        if (tid) img = metadataImage(await tokenMeta(addr, tid));
+        else queueRebuild(addr);
+      }
     }
-    /* Unpinned art produces a URL that answers 504 on every gateway — a
-       broken cover reads worse than the placeholder. Persist only a url
-       that demonstrably serves an image, from whichever gateway does. */
-    let proven = null;
-    for (const u of (img ? (ipfsRoots(img) || [img]) : [])) {
-      try {
-        const r = await fetch(u, { signal: AbortSignal.timeout(7000), size: 4194304 });
-        if (r.ok && /^image\//.test(r.headers.get('content-type') || '')) { proven = u; }
-        try { await r.arrayBuffer(); } catch (_) {}
-        if (proven) break;
-      } catch (_) {}
-    }
+    const proven = img && await fetchArt(img).catch(() => null) ? img : null;
     const row = registry.collections.find((x) => x.address === addr);
     if (proven && row && !row.image) { row.image = proven; saveJson(REGISTRY_FILE, registry); }
     else coverTried.set(addr, Date.now());
@@ -1651,7 +1670,7 @@ const MIME = {
 const wantsGzip = (res) => /\bgzip\b/.test((res.req && res.req.headers['accept-encoding']) || '');
 function json(res, status, body) {
   let data = Buffer.from(JSON.stringify(body));
-  const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+  const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Vary': 'Accept-Encoding' };
   if (data.length > 2048 && wantsGzip(res)) {
     data = zlib.gzipSync(data);
     headers['Content-Encoding'] = 'gzip';
@@ -1699,6 +1718,7 @@ function serveStatic(res, urlPath) {
   const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+    'Vary': 'Accept-Encoding',
   };
   const stat = fs.statSync(file);
   if (GZIPPABLE.has(ext) && stat.size > 2048 && wantsGzip(res)) {
@@ -1758,11 +1778,19 @@ async function fetchJson(url, opts = {}, tries = 2) {
   throw err;
 }
 
+let gameInfoBusy = null;
 async function gameInfo() {
+  if (gameInfoBusy) return aurvaniaInfo || gameInfoBusy;
+  if (Date.now() - aurvaniaAt < 600000) return aurvaniaInfo || {};
+  if (!gameInfoBusy) gameInfoBusy = refreshGameInfo().finally(() => { gameInfoBusy = null; });
+  return aurvaniaInfo || gameInfoBusy;
+}
+async function refreshGameInfo() {
   // Refresh at most every ten minutes; serve the remembered copy meanwhile.
   if (aurvaniaInfo && Date.now() - aurvaniaAt < 600000) return aurvaniaInfo;
   try {
-    const r = await fetchJson(CFG.AURVANIA_API + '/api/chain-info');
+    aurvaniaAt = Date.now();
+    const r = await fetchJson(CFG.AURVANIA_API + '/api/chain-info', { timeoutMs: 2500 }, 1);
     if (r.ok && r.body) {
       aurvaniaInfo = r.body;
       aurvaniaError = null;
@@ -1780,14 +1808,14 @@ async function gameInfo() {
 
 const api = {
   async config(req, res) {
-    const gi = await gameInfo();
-    let feeBps = 250, treasury = null;
-    if (marketC) {
-      try {
-        const cfg = await cached('marketcfg', 300000, async () => (await marketC.functions.get_config({})).result);
-        if (cfg) { feeBps = Number(cfg.fee_bps || 0); treasury = cfg.treasury || null; }
-      } catch (_) {}
-    }
+    let deadline;
+    const feeConfig = Promise.race([
+      marketCfg(),
+      new Promise(resolve => { deadline = setTimeout(() => resolve({}), 3000); }),
+    ]).finally(() => clearTimeout(deadline));
+    const [gi, mc] = await Promise.all([CFG.GOOGLE_CLIENT_ID ? Promise.resolve({}) : gameInfo(), feeConfig]);
+    let feeBps = marketC ? null : 0, treasury = null;
+    if (mc && Object.keys(mc).length) { feeBps = Number(mc.fee_bps ?? 0); treasury = mc.treasury || null; }
     json(res, 200, {
       network: CFG.NETWORK, networkLabel: NET.label, rpc: RPCS[0], rpcs: RPCS,
       explorer: NET.explorer, koin: NET.koinContract,
@@ -1860,9 +1888,7 @@ const api = {
       return json(res, 200, { ok: true, removed: addr });
     }
     const reg = registry.collections.find(c => c.address === addr) || null;
-    const info = await collectionInfo(addr);
-    // A blinked RPC read of the order book must not take the page down.
-    const orders = await collectionOrders(addr).catch(() => []);
+    const [info, orders] = await Promise.all([collectionInfo(addr), collectionOrders(addr, { browse: true }).catch(() => [])]);
     json(res, 200, { registered: !!reg, meta: reg ? { ...reg, image: coverUrl(reg) } : null, info, orders });
   },
 
@@ -1886,8 +1912,8 @@ const api = {
       wanted.get(trait).add(value);
     }
 
-    const idx = await collectionIndex(addr);
-    const orders = await collectionOrders(addr).catch(() => []);
+    const idx = await collectionIndex(addr, { browse: true });
+    const orders = await collectionOrders(addr, { browse: true }).catch(() => []);
     const listed = new Map(orders.map(o => [o.tokenId, o]));
 
     /* "Mine" is just another filter, so it composes with the traits
@@ -1947,7 +1973,7 @@ const api = {
       })),
       matched: rows.length,
       indexed: idx.total,
-      partial: idx.partial,
+      partial: idx.partial, loading: !!idx.loading,
       nextOffset: offset + limit < rows.length ? offset + limit : null,
     });
   },
@@ -1955,10 +1981,10 @@ const api = {
   /** The sidebar: every trait in the collection with real counts. */
   async facets(req, res, addr) {
     if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
-    const idx = await collectionIndex(addr);
-    const orders = await collectionOrders(addr).catch(() => []);
+    const idx = await collectionIndex(addr, { browse: true });
+    const orders = await collectionOrders(addr, { browse: true }).catch(() => []);
     json(res, 200, {
-      facets: idx.facets, indexed: idx.total, partial: idx.partial, listed: orders.length,
+      facets: idx.facets, indexed: idx.total, partial: idx.partial, loading: !!idx.loading, listed: orders.length,
     });
   },
 
@@ -1981,7 +2007,7 @@ const api = {
     const c = nftC(addr);
     /* Four independent reads, one round-trip of wall clock — this is
        the page a buyer sits on, and it reads live state on purpose. */
-    const [owner, meta, order] = await Promise.all([
+    const [owner, meta, order, info] = await Promise.all([
       c.functions.owner_of({ token_id: tokenId }).then((r) => r.result?.value || null, () => null),
       tokenMeta(addr, tokenId).catch(() => null),
       (async () => {
@@ -1996,6 +2022,7 @@ const api = {
           };
         } catch (_) { return null; }
       })(),
+      collectionInfo(addr),
     ]);
     let approved = false;
     if (CFG.MARKET_ADDR && owner) {
@@ -2008,10 +2035,9 @@ const api = {
         }
       } catch (_) {}
     }
-    const info = await collectionInfo(addr);
     json(res, 200, {
       collection: info, tokenId, label: hexToLabel(tokenId), owner,
-      meta: meta ? { name: meta.name, description: meta.description, image: artUrl(addr, tokenId, rewriteImg(meta.image)), attributes: meta.attributes || [] } : null,
+      meta: meta ? { name: meta.name, description: meta.description, image: artUrl(addr, tokenId, metadataImage(meta)), attributes: meta.attributes || [] } : null,
       order, approved,
     });
   },
@@ -2063,7 +2089,7 @@ const api = {
             const meta = row && (row.image || !String(row.name || '').match(/^\d+$/))
               ? { name: row.name, image: row.image }
               : await tokenMeta(c.address, tid).catch(() => null);
-            const img = row && row.image ? row.image : rewriteImg(meta?.image);
+            const img = row && row.image ? row.image : metadataImage(meta);
             return { tokenId: tid, label: hexToLabel(tid), name: meta?.name || hexToLabel(tid), image: artUrl(c.address, tid, img), order: listed.get(tid) || null };
           })),
         };
@@ -2666,7 +2692,7 @@ const api = {
       const meta = knownRow
         ? { name: knownRow.name, image: knownRow.image, attributes: null }
         : await tokenMeta(addr, tokenId).catch(() => null);
-      const url = rewriteImg(meta?.image);
+      const url = metadataImage(meta);
       if (!url) {
         res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '15' });
         return res.end(JSON.stringify({ error: 'That token\'s metadata is unreachable right now — retry in a moment' }));
@@ -2871,7 +2897,7 @@ server.listen(CFG.PORT, () => {
       }
       for (const c of registry.collections.slice()) {
         try {
-          const idx = await collectionIndex(c.address);
+          const idx = await collectionIndex(c.address, { browse: true });
           for (const t of (idx.tokens || []).slice(0, 24)) {
             if (t.image) await fetchArt(t.image).catch(() => {});
           }

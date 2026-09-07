@@ -13,7 +13,7 @@ everything a player earns can be sold, and everything sold stays in play.
 
 | | |
 |---|---|
-| **Fee** | 2.5% of every sale, to the treasury (config-capped at 10%, on chain) |
+| **Fee** | FREE (0%) after the marketplace configuration is applied; the UI always reports the actual on-chain fee |
 | **Currency** | KOIN only, to start |
 | **Royalties** | whatever the collection declares (KCS-2 `royalties()`), capped at 10% — same cap Kollection used |
 | **Custody** | none: listings are approval-based, the NFT **stays in the seller's wallet** until the moment it sells |
@@ -45,13 +45,36 @@ node build.js market # -> market/build/release/contract.wasm + ABI
 node deploy.js keygen --keys keys.env
 node deploy.js deploy --keys keys.env --network harbinger   # test first
 node deploy.js deploy --keys keys.env --network mainnet \
-     --treasury <your-treasury-address> --fee-bps 250
+     --treasury <your-treasury-address> --fee-bps 0
 ```
 
 `keys.env` is gitignored and holds `KOINOS_DEV_WIF` (pays all mana) and
 `KOINOS_MARKET_WIF` (the account the contract lives on — on Koinos, a
 contract IS an account). Verified prebuilt artifacts ship in
 `contracts/prebuilt/`.
+
+### Set the existing marketplace fee to FREE
+
+A website deployment cannot change a deployed contract's stored fee. The current
+OURO marketplace is `1BsZx4Hc69tWo1q9sXNP9ywvpBW2KdXwc8`; it reported 250 basis
+points (2.5%) during the September 7, 2026 inspection. On the operator machine
+that already holds the marketplace and mana-payer keys, run:
+
+```sh
+cd contracts
+node deploy.js config --keys /secure/path/keys.env --network mainnet \
+  --market 1BsZx4Hc69tWo1q9sXNP9ywvpBW2KdXwc8 --fee-bps 0
+node deploy.js status --keys /secure/path/keys.env --network mainnet
+```
+
+This uses the existing contract and preserves its treasury, KOIN address, orders,
+and collection royalties. No bytecode upgrade is needed. Verify `fee_bps` is zero
+(an omitted protobuf zero field also means zero), wait up to five minutes for the
+server's configuration cache, then reload and confirm `/api/config` returns
+`feeBps: 0`. The home page, footer, item page and listing breakdown then show
+**FREE**. Before configuration, they truthfully show the existing fee; if the
+contract cannot be read, they show **Unavailable**, and checkout/listing is disabled.
+Never upload the key file to GitHub or send it through chat.
 
 ## The server (`server.js`)
 
@@ -150,43 +173,42 @@ and holds the index for ten minutes:
 Collections larger than `INDEX_MAX_TOKENS` are indexed to that depth and the
 response says `partial: true` rather than pretending to be complete.
 
-### Instant pages, and where the art really comes from
+### Page and artwork loading
 
-Nobody waits on the chain or on IPFS anymore:
+Home and collection indexes are persisted under `DATA_DIR`. Stale indexes remain
+available during background refresh; a new collection returns `loading: true`
+with a partial response while its index builds, and the browser polls without
+holding an HTTP request open. Collection headers and grids do not wait for trait
+facets. Concurrent cache misses share one request. Browsing reuses the last known order book while refreshing; purchase execution still checks current on-chain orders. Cached sign-in settings return
+immediately while refreshing, and first-load configuration waits are bounded.
 
-* the **home page** answers from a snapshot at memory speed; a stale
-  snapshot refreshes *behind* the response it just gave (floors lag live
-  trading by a refresh — browsing is constant, buying re-checks on chain);
-* **collection indexes** are persisted to `DATA_DIR` and served however
-  old they are while one background worker rebuilds stale ones — a
-  restart begins warm, and the only cold walk left is the first sight of
-  a brand-new collection (boot pre-warms every registered one);
-* **art is served from here** (`/img/c/…` covers, `/img/t/…` tokens),
-  not from whichever IPFS gateway the visitor's browser can reach. The
-  server resolves the url from data it already trusts — the registry
-  row, the token's own metadata, never anything client-supplied — pulls
-  it once with gateway fallbacks and real patience, and keeps the bytes
-  on disk (12MB per artwork, 2GB total, swept oldest-first). Every load
-  after the first is a same-origin file with an ETag. This is also why
-  covers stopped "sometimes not showing": one flaky gateway used to be
-  one broken `<img>`; now it is at worst one slow *first* view;
-* **grids load thumbnails** (`?w=480`): a tile does not need the 1.6MB
-  original, it needs the 50KB that look identical at tile size.
-  Derivatives are cut once with jimp (pure JS, vendored — a deploy
-  cannot lose it) and cached beside the original; the token page keeps
-  full resolution. Text responses (API JSON, the app, koilib) ship
-  gzipped — the vendored koilib alone drops 699KB → 129KB.
+Artwork uses same-origin `/img/c/:address` and `/img/t/:address/:tokenId` routes:
 
-When a collection's metadata still resolves but its image host has died
-outright (a deleted bucket, an unpinned CID), the operator can restore
-the art from local files: `POST /api/art?key=…&collection=…&file=Name.png`
-with the raw image as the body. The filename is matched against the
-image urls in the collection's own metadata — the caller can only fill
-in bytes for a url the chain already names, never choose a target — and
-the result is stored **pinned**, exempt from the cache sweep: the site
-becomes the art's archive, not just its cache. `tools/seed-art.js`
-walks a directory of files and imports a whole collection in one run
-(`--register` also adds it to the registry afterwards).
+* HTTPS/IPFS links, embedded raster/SVG data URLs, and SVG `image_data` are supported.
+  This fixes Discover Koinos Paint, whose art is stored directly on chain.
+* SVG is served as an image with a restrictive CSP and `nosniff`, never inserted
+  as page markup. Collections without a cover derive one from their own NFTs.
+* IPFS gateways race for a successful response within a fixed timeout; a quick
+  failure cannot beat a healthy gateway. Body reads have a real size limit.
+* Resolved metadata survives restarts in `DATA_DIR/metadata`. Existing audited
+  per-token references recover sampled legacy NFTs (including six Crew NFTs)
+  while a live metadata refresh runs; unsampled tokens are never guessed.
+* Original art is cached on disk. PNG/JPEG thumbnails are generated in worker
+  threads so CPU-heavy image work does not stop the HTTP server. GIF/WebP files
+  retain their originals so animation is preserved. SVG remains vector artwork.
+* Missing artwork shows a readable placeholder, retries once, and keeps the NFT
+  clickable. Requests no longer redirect visitors back to a failing gateway.
+
+The first deployment rebuilds old indexes with the new image support. Full filter
+counts still require index completion; indexes remain capped by `INDEX_MAX_TOKENS`.
+An unreachable IPFS file still needs a reachable pin or the original artwork.
+Archived metadata restores its reference, not missing image bytes.
+
+To restore originals, `POST /api/art?key=…&collection=…&file=Name.png` accepts raw
+image bytes; names must match the collection's metadata. `tools/seed-art.js`
+imports a directory. Restored images are pinned against cache eviction and their
+old thumbnails are invalidated. Keep `DATA_DIR` on a persistent disk outside the
+application checkout so deployments retain metadata, artwork and collection keys.
 
 ### Trade history
 
@@ -260,6 +282,10 @@ any collection is also reachable unregistered at `#/c/<address>` — the
 registry only decides the home page, and which approvals the sponsor pays for.
 
 ## Tests (`tests/`)
+
+`npm run test:regressions` runs deterministic fee, image, and loading regressions
+without broadcasting transactions or relying on public RPC/IPFS availability.
+
 
 * `market-check.js` — API surface, registry rules, and one crafted
   transaction per sponsor gate (the happy path is proven with a zero-mana

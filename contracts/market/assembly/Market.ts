@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // The marketplace — every KCS-2 collection on Koinos, KOIN prices,
-// 2.5% platform fee, collection royalties honored.
+// Configurable platform fee (OURO defaults to 0%), collection royalties honored.
 //
 // A port of the open-source Kollection contract (MIT,
 // github.com/kollection-nft/marketplace) onto the koinosbox toolchain,

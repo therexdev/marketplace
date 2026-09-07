@@ -8,7 +8,7 @@
                             (re-uploads the bytecode over the LIVE contract;
                              orders and config are storage and survive intact)
      node deploy.js config  --keys keys.env [--network ...]
-                            [--treasury <addr>] [--fee-bps 250]
+                            [--treasury <addr>] [--fee-bps 0]
      node deploy.js status  --keys keys.env [--network ...]
 
    keys.env holds two WIFs and is NEVER committed (see .gitignore):
@@ -201,10 +201,15 @@ function sanitizeAbi(json) {
   }
 
   if (cmd === 'deploy' || cmd === 'config') {
-    const treasury = arg('--treasury', devAddr);
-    const feeBps = parseInt(arg('--fee-bps', '250'), 10);
+    // Fee-only changes must preserve the existing treasury and token address.
+    const previous = cmd === 'config' ? (await marketC.functions.get_config({})).result : null;
+    const treasury = arg('--treasury', previous?.treasury || devAddr);
+    const feeBps = Number(arg('--fee-bps', '0'));
+    if (!Number.isInteger(feeBps) || feeBps < 0 || feeBps > 1000) throw new Error('--fee-bps must be an integer from 0 to 1000');
+    const expectedMarket = arg('--market', '');
+    if (expectedMarket && expectedMarket !== marketId) throw new Error('The market key does not match --market');
     await send('config', async () => marketC.functions.set_config({
-      treasury, koin: net.koinContract, fee_bps: feeBps,
+      treasury, koin: previous?.koin || net.koinContract, fee_bps: feeBps,
     }, await paidByDev(3)));
     console.log(`config:   treasury ${treasury} · fee ${(feeBps / 100).toFixed(2)}% · koin ${net.koinContract}`);
   }

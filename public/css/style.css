@@ -383,3 +383,7 @@ textarea:focus { outline: none; border-color: var(--accent); }
 }
 /* And whatever else ever overflows, the page itself never pans sideways. */
 body { overflow-x: hidden; }
+
+/* Image failures retain a readable, clickable card rather than a broken icon. */
+#view img[hidden] { display: none; }
+#view .ph.art-unavailable { font-size: 14px; line-height: 1.4; opacity: .75; text-align: center; padding: 16px; }

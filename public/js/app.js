@@ -16,6 +16,7 @@ const KOIN = (sats) => {
   return n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 2 })
     : n.toLocaleString('en-US', { maximumFractionDigits: 8 });
 };
+const feeLabel = bps => bps == null ? 'Unavailable' : Number(bps) === 0 ? 'FREE' : `${Number(bps) / 100}%`;
 const short = (a) => a ? `${a.slice(0, 6)}…${a.slice(-4)}` : '—';
 
 function toast(msg, cls = '', ms = 4000) {
@@ -170,7 +171,7 @@ function walletModal() {
 
 const tokCard = (colAddr, t) => `
   <a class="tok-card" href="#/t/${colAddr}/${encodeURIComponent(t.tokenId)}">
-    <div class="tok-art">${t.image ? `<img src="${esc(thumb(t.image))}" alt="" loading="lazy">` : '<div class="ph">🖼️</div>'}</div>
+    <div class="tok-art">${t.image ? `<img src="${esc(thumb(t.image))}" alt="" loading="lazy" decoding="async">` : '<div class="ph">🖼️</div>'}</div>
     <div class="tok-body">
       <span class="tok-name">${esc(t.name || t.label)}</span>
       ${t.order ? `<span class="price">${KOIN(t.order.price)} <small>KOIN</small></span>` : ''}
@@ -187,19 +188,19 @@ async function homeView() {
     <section class="hero">
       <h1>Every Koinos collection.<br>One <em>endless</em> market.</h1>
       <p>Buy and sell NFTs in KOIN with zero mana fees — the marketplace pays
-      them for you. 2.5% platform fee, collection royalties honored, and your
+      them for you. ${feeLabel(Wallet.cfg.feeBps)} platform fee, collection royalties honored, and your
       Aurvania account works here out of the box.</p>
       <div class="hero-stats">
         <div class="hstat"><b>${collections.length}</b><span>collections</span></div>
         <div class="hstat"><b>${listed}</b><span>live listings</span></div>
-        <div class="hstat"><b>2.5%</b><span>platform fee</span></div>
+        <div class="hstat"><b>${feeLabel(Wallet.cfg.feeBps)}</b><span>platform fee</span></div>
       </div>
     </section>
     <div class="section-head">Collections</div>
     <div class="grid">
       ${collections.map((c) => `
         <a class="col-card" href="#/c/${c.address}">
-          <div class="col-art">${c.image ? `<img src="${esc(thumb(c.image))}" alt="" loading="lazy">` : '<div class="ph">◆</div>'}</div>
+          <div class="col-art">${c.image ? `<img src="${esc(thumb(c.image))}" alt="" loading="lazy" decoding="async">` : '<div class="ph">◆</div>'}</div>
           <div class="col-body">
             <div class="col-name">${esc(c.name || c.address)}</div>
             <div class="col-desc">${esc(c.description || '')}</div>
@@ -221,10 +222,11 @@ async function homeView() {
 async function collectionView(addr, queryString) {
   view.innerHTML = '<div class="loading"><span class="spin"></span> Loading collection…</div>';
   const state = new URLSearchParams(queryString || '');
-  const [data, facetData] = await Promise.all([
-    api('/collections/' + addr),
-    api(`/collections/${addr}/facets`).catch(() => ({ facets: [], indexed: 0, partial: false })),
-  ]);
+  const requestedHash = location.hash;
+  const facetRequest = api(`/collections/${addr}/facets`).catch(() => ({ facets: [], indexed: 0, partial: false }));
+  let facetData = { facets: [], indexed: 0, partial: false, loading: true };
+  const data = await api('/collections/' + addr);
+  if (location.hash !== requestedHash) return;
   const info = data.info || {};
 
   const activeTraits = () => {
@@ -347,7 +349,7 @@ async function collectionView(addr, queryString) {
             }).join('')}
           </div>
         </div>`).join('')}
-      ${facetData.facets.length ? '' : '<div class="facet dim">This collection publishes no traits to filter on.</div>'}
+      ${facetData.facets.length ? '' : `<div class="facet dim">${facetData.loading ? 'Loading traits…' : 'This collection publishes no traits to filter on.'}</div>`}
       ${facetData.partial ? `<div class="facet dim">Filters cover the first ${facetData.indexed} items of this collection.</div>` : ''}`;
 
     side.querySelectorAll('input[name="c-status"]').forEach((el) => {
@@ -379,6 +381,7 @@ async function collectionView(addr, queryString) {
     };
   };
 
+  facetRequest.then(data => { if (side.isConnected) { facetData = data; paintSidebar(); } });
   let reqId = 0;
   const paintGrid = async () => {
     const mine = state.get('status') === 'mine';
@@ -395,7 +398,15 @@ async function collectionView(addr, queryString) {
     let offset = 0;
     const page = async () => {
       const q = await api(`/collections/${addr}/tokens?limit=24&offset=${offset}&${params}`);
-      if (mine_ !== reqId) return;                 // a newer filter won
+      if (mine_ !== reqId || !grid.isConnected) return;                 // a newer filter won
+      if (q.loading) {
+        grid.innerHTML = '<div class="loading"><span class="spin"></span> Loading collection items…</div>';
+        setTimeout(() => { if (mine_ === reqId && grid.isConnected) page().catch(() => {}); }, 3000);
+        return;
+      }
+      if (facetData.loading) {
+        api(`/collections/${addr}/facets`).then(data => { if (side.isConnected) { facetData = data; paintSidebar(); } }).catch(() => {});
+      }
       $('#c-count').textContent = `${q.matched.toLocaleString('en-US')} item${q.matched === 1 ? '' : 's'}`;
       if (!offset) {
         grid.innerHTML = q.matched
@@ -517,16 +528,17 @@ async function tokenView(addr, tokenId) {
   const me = Wallet.account && Wallet.account.address;
   const isOwner = me && t.owner === me;
   const order = t.order && !t.order.dead ? t.order : null;
-  const feeBps = Wallet.cfg.feeBps || 250;
+  const feeBps = Wallet.cfg.feeBps ?? null;
   const royBps = t.collection.royaltyBps || 0;
 
   const dealHtml = () => {
     if (order && !isOwner) {
-      const sellerGets = (BigInt(order.price) * BigInt(10000 - feeBps - royBps)) / 10000n;
+      const price = BigInt(order.price);
+      const sellerGets = feeBps == null ? null : price - price * BigInt(feeBps) / 10000n - price * BigInt(royBps) / 10000n;
       return `
         <div class="big-price">${KOIN(order.price)} <small style="font-size:16px">KOIN</small></div>
-        <div class="fee-note">seller receives ${KOIN(sellerGets.toString())} · ${(feeBps / 100).toFixed(1)}% platform fee${royBps ? ` · ${(royBps / 100).toFixed(1)}% creator royalty` : ''} · mana on us</div>
-        <div class="row"><button class="btn primary big" id="t-buy">Buy now</button></div>`;
+        <div class="fee-note">seller receives ${sellerGets == null ? 'unavailable' : KOIN(sellerGets.toString())} · ${feeLabel(feeBps)} platform fee${royBps ? ` · ${(royBps / 100).toFixed(1)}% creator royalty` : ''} · mana on us</div>
+        <div class="row"><button class="btn primary big" id="t-buy" ${feeBps == null ? 'disabled' : ''}>Buy now</button>${feeBps == null ? '<p class="fee-note">The current platform fee could not be verified. Reload to try again.</p>' : ''}</div>`;
     }
     if (order && isOwner) {
       return `
@@ -544,7 +556,7 @@ async function tokenView(addr, tokenId) {
 
   view.innerHTML = `
     <div class="t-wrap">
-      <div class="t-art">${t.meta?.image ? `<img src="${esc(t.meta.image)}" alt="">` : '<div class="ph">🖼️</div>'}</div>
+      <div class="t-art">${t.meta?.image ? `<img src="${esc(t.meta.image)}" alt="" decoding="async">` : '<div class="ph">🖼️</div>'}</div>
       <div class="t-info">
         <a class="crumb" href="#/c/${addr}">← ${esc(t.collection.name || addr)}</a>
         <h2>${esc(t.meta?.name || t.label)}</h2>
@@ -664,14 +676,14 @@ async function listView(addr, tokenId) {
     return;
   }
 
-  const feeBps = Wallet.cfg.feeBps || 250;
+  const feeBps = Wallet.cfg.feeBps ?? null;
   const royBps = t.collection.royaltyBps || 0;
 
   view.innerHTML = `
     <a class="crumb" href="${back}">← ${esc(t.meta?.name || t.label)}</a>
     <div class="list-wrap">
       <div class="list-item">
-        <div class="t-art">${t.meta?.image ? `<img src="${esc(thumb(t.meta.image))}" alt="">` : '<div class="ph">🖼️</div>'}</div>
+        <div class="t-art">${t.meta?.image ? `<img src="${esc(thumb(t.meta.image))}" alt="" decoding="async">` : '<div class="ph">🖼️</div>'}</div>
         <div>
           <h2>${esc(t.meta?.name || t.label)}</h2>
           <div class="kv">${esc(t.collection.name || addr)} · <span class="mono">${esc(t.label)}</span></div>
@@ -704,11 +716,11 @@ async function listView(addr, tokenId) {
   const row = (label, value, cls = '') => `<div class="brow ${cls}"><span>${label}</span><b>${value}</b></div>`;
   const repaint = () => {
     const koin = parseFloat(priceEl.value);
-    const ok = koin > 0 && Number.isFinite(koin);
+    const ok = koin > 0 && Number.isFinite(koin) && feeBps != null;
     goBtn.disabled = !ok;
     if (!ok) {
       breakEl.innerHTML =
-        row('Platform fee', `${(feeBps / 100).toFixed(2)}%`) +
+        row('Platform fee', feeLabel(feeBps)) +
         (royBps ? row('Collection royalty', `${(royBps / 100).toFixed(2)}%`) : '') +
         row('You receive', 'enter a price', 'total');
       return;
@@ -719,7 +731,7 @@ async function listView(addr, tokenId) {
     const net = sats - fee - roy;
     breakEl.innerHTML =
       row('Listing price', `${KOIN(sats.toString())} KOIN`) +
-      row(`Platform fee · ${(feeBps / 100).toFixed(2)}%`, `− ${KOIN(fee.toString())} KOIN`, 'minus') +
+      row(`Platform fee · ${feeLabel(feeBps)}`, feeBps === 0 ? 'FREE' : `− ${KOIN(fee.toString())} KOIN`, 'minus') +
       (royBps ? row(`Collection royalty · ${(royBps / 100).toFixed(2)}%`, `− ${KOIN(roy.toString())} KOIN`, 'minus') : '') +
       row('You receive', `${KOIN(net.toString())} KOIN`, 'total');
   };
@@ -776,7 +788,7 @@ function wireArt(id) {
   const prev = $(`#${id}-prev`), urlEl = $(`#${id}-url`), fileEl = $(`#${id}-file`);
   const show = (u) => {
     state.url = u || '';
-    prev.innerHTML = u ? `<img src="${esc(u)}" alt="">` : '<span>no image</span>';
+    prev.innerHTML = u ? `<img src="${esc(u)}" alt="" decoding="async">` : '<span>no image</span>';
   };
   $(`#${id}-btn`).onclick = () => fileEl.click();
   fileEl.onchange = async () => {
@@ -1291,21 +1303,26 @@ function paintHeader() {
   $('#btn-me').classList.toggle('hidden', !a);
 }
 
-/* ipfs.io drops content that dweb.link still serves, and vice versa.
-   When a piece of art dies on one gateway, retry it once on the other.
-   Error events don't bubble, so this listens in capture. */
 document.addEventListener('error', (e) => {
   const img = e.target;
-  if (!(img instanceof HTMLImageElement)) return;
-  const src = img.currentSrc || img.src || '';
-  if (img.dataset.gwRetried) return;
-  if (/^https:\/\/ipfs\.io\/ipfs\//.test(src)) {
-    img.dataset.gwRetried = '1';
-    img.src = src.replace('https://ipfs.io/ipfs/', 'https://dweb.link/ipfs/');
-  } else if (/^https:\/\/dweb\.link\/ipfs\//.test(src)) {
-    img.dataset.gwRetried = '1';
-    img.src = src.replace('https://dweb.link/ipfs/', 'https://ipfs.io/ipfs/');
+  if (!(img instanceof HTMLImageElement) || !img.closest('#view')) return;
+  if (!img.dataset.retried) {
+    img.dataset.retried = '1';
+    setTimeout(() => { if (img.isConnected) { const src = new URL(img.src); src.searchParams.set('retry', Date.now()); img.src = src.href; } }, 15000);
   }
+  img.hidden = true;
+  if (!img.parentElement.querySelector('.art-unavailable')) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'ph art-unavailable';
+    placeholder.textContent = 'Artwork unavailable';
+    img.parentElement.append(placeholder);
+  }
+}, true);
+document.addEventListener('load', e => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  img.hidden = false;
+  img.parentElement?.querySelector('.art-unavailable')?.remove();
 }, true);
 
 /* Google One Tap on landing. A returning visitor already signed into Google
@@ -1347,6 +1364,7 @@ function googleOneTap() {
 
 (async () => {
   const cfg = await Wallet.init();
+  $('#foot-fee').textContent = `${feeLabel(cfg.feeBps)} platform fee · collection royalties honored · mana on us`;
   $('#foot-market').textContent = cfg.market
     ? `${cfg.networkLabel || cfg.network} · market ${cfg.market}`
     : 'contract not deployed yet';

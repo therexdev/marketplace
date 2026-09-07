@@ -2,12 +2,13 @@
   "name": "marketplace",
   "version": "0.1.0",
   "private": true,
-  "description": "OURO (ouro.lifestyle) — an NFT marketplace for every KCS-2 collection on Koinos. KOIN prices, 2.5% platform fee, royalties honored, mana sponsored.",
+  "description": "OURO (ouro.lifestyle) \u2014 an NFT marketplace for every KCS-2 collection on Koinos. KOIN prices, FREE platform fee (0%), royalties honored, mana sponsored.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "echo \"no build step — OURO serves static files and server.js directly\"",
-    "test": "node tests/market-check.js"
+    "build": "echo \"no build step \u2014 OURO serves static files and server.js directly\"",
+    "test": "node tests/market-check.js",
+    "test:regressions": "node --test tests/regressions.test.js"
   },
   "dependencies": {
     "jimp": "^1.6.1",
