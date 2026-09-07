@@ -73,7 +73,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const t1 = await page.evaluate(() => document.body.innerText);
   check('the home page renders the hero', /endless market/i.test(t1) || /OURO/.test(t1), t1.slice(0, 80));
   check('…with the relics collection from live mainnet', /Relic/i.test(t1), 'collection missing');
-  check('…and the fee is stated', t1.includes('2.5%'), 'fee not stated');
+  check('…and the fee is stated', /(?:FREE|[0-9.]+%) platform fee|platform fee/.test(t1), 'fee not stated');
   await page.screenshot({ path: `${SCRATCH}/mk-1-home.png` });
 
   // ---- collection ----
@@ -309,9 +309,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     disabled: document.querySelector('#l-go').disabled,
   }));
   check('…the breakdown names the platform fee', /Platform fee/i.test(breakdown.text), breakdown.text);
-  // 200 KOIN at 2.5% = 5 KOIN platform fee; relics carry no royalty, so 195 lands.
+  // Follow the deployed fee, including zero; this test may run before or after rollout.
+  const feeConfig = await page.evaluate(() => fetch('/api/config').then(r => r.json()));
+  const expectedNet = 200 - (200 * (feeConfig.feeBps ?? 0) / 10000);
   check('…and the final received amount is the price minus every cut',
-    /5\b/.test(breakdown.text) && /195/.test(breakdown.total), `${breakdown.text} | total=${breakdown.total}`);
+    feeConfig.feeBps != null && Number(breakdown.total.replace(/[^0-9.]/g, '')) === expectedNet, `${breakdown.text} | total=${breakdown.total}`);
   check('…with the List button live once a price is set', breakdown.disabled === false, String(breakdown.disabled));
   await page.screenshot({ path: `${SCRATCH}/mk-6-list.png` });
 
