@@ -117,6 +117,26 @@ marketplace, log in at aurvania.com, same address. For Google sign-in the
 marketplace's domain must be added to the OAuth client's **authorized
 JavaScript origins** in the Google console.
 
+Legacy `AURVANIA_API` settings for `aurvania.quest` or
+`koinoscrusaders.com` are normalized to `https://aurvania.com` before any
+request. Their 301 redirects discard POST bodies, which previously caused
+Google and email logins to return `Unauthorized`. Account calls reject
+unexpected redirects and are not automatically retried.
+
+### Listing consistency
+
+OURO reads the full on-chain order book and shares one short-lived cache
+across collections, grids, and home statistics. The deployed contract's
+collection-scoped enumeration can return empty despite active individual
+orders. Global pagination uses the full collection-plus-token storage key
+and checks progress in Koinos's length-first key order.
+
+Ordinary grids can use a snapshot up to 30 seconds old while it refreshes.
+The unlisted filter used by “List all” waits for the current cache refresh;
+failed reads return an unavailable response instead of marking every item
+unlisted. Confirmed individual order reads update the shared snapshot,
+and submitted market transactions expire the listing and home caches.
+
 `GET /api/diag` answers, without a key, whether this server can actually
 reach the game — the question worth asking first when sign-in misbehaves.
 `?ua=…` retries with a different User-Agent from the server itself, which is
