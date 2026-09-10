@@ -100,6 +100,18 @@ function choosePort() {
 }
 const PORT_CHOICE = choosePort();
 
+function accountApiBase(raw) {
+  const url = new URL(String(raw || 'https://aurvania.com').trim());
+  // Old production env values survive deploys. Their 301 redirects turn
+  // login POSTs into GETs, dropping the credentials and returning Unauthorized.
+  if (['aurvania.quest', 'www.aurvania.quest', 'koinoscrusaders.com', 'www.koinoscrusaders.com'].includes(url.hostname)) {
+    url.protocol = 'https:';
+    url.hostname = 'aurvania.com';
+    url.port = '';
+  }
+  return url.toString().replace(/\/$/, '');
+}
+
 const CFG = {
   PORT: PORT_CHOICE.port,
   DATA_DIR: path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data-live')),
@@ -113,7 +125,7 @@ const CFG = {
      not a charge — only rc_used leaves the payer. */
   SPONSOR_RC_PER_OP: bigEnv('SPONSOR_RC_PER_OP', 3e8),
   SPONSOR_RC_MAX: bigEnv('SPONSOR_RC_MAX', 15e8),
-  AURVANIA_API: (process.env.AURVANIA_API || 'https://aurvania.com').replace(/\/$/, ''),
+  AURVANIA_API: accountApiBase(process.env.AURVANIA_API),
   /* Optional: the same Google OAuth client the game uses. Set it here and
      sign-in no longer waits on the game server being reachable. */
   GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '').trim(),
@@ -298,34 +310,72 @@ async function collectionInfo(addr) {
   });
 }
 
-async function collectionOrders(addr, { browse = false } = {}) {
-  const remembered = caches.get('orders:' + addr);
-  if (browse && remembered) {
-    collectionOrders(addr).catch(() => {});
-    return remembered.value.filter(o => !Number(o.expires) || Number(o.expires) > Date.now());
-  }
+const ORDER_BOOK_KEY = 'market-orders';
+const activeOrder = o => !Number(o.expires) || Number(o.expires) > Date.now();
+
+async function marketOrders() {
   if (!marketC) return [];
-  return cached('orders:' + addr, 10000, async () => {
+  return cached(ORDER_BOOK_KEY, 10000, async () => {
     const rows = [];
     let startAfter = '';
-    for (let page = 0; page < 20; page++) {
-      const args = { collection: addr, limit: 100 };
+    // The deployed scoped get_orders returns empty for collections with
+    // live get_order entries. Walk the working full book once for all views.
+    // Its cursor is the complete storage key: collection bytes + token bytes.
+    for (let page = 0; page < 100; page++) {
+      const args = { limit: 200 };
       if (startAfter) args.start_after = startAfter;
       const { result } = await marketC.functions.get_orders(args);
       const batch = result?.value || [];
-      rows.push(...batch);
-      if (batch.length < 100) break;
-      startAfter = batch[batch.length - 1].token_id;
+      for (const o of batch) {
+        if (!isAddr(o.collection) || !isAddr(o.seller) || !/^0x(?:[0-9a-fA-F]{2})+$/.test(o.token_id) || !/^\d+$/.test(o.price)) {
+          throw new Error('Invalid order-book response');
+        }
+        const key = '0x' + Buffer.concat([Buffer.from(utils.decodeBase58(o.collection)), Buffer.from(o.token_id.slice(2), 'hex')]).toString('hex');
+        // Koinos orders storage keys by length first, then by bytes.
+        if (startAfter && (key.length < startAfter.length || (key.length === startAfter.length && key <= startAfter))) {
+          throw new Error('Order-book cursor did not advance');
+        }
+        startAfter = key;
+        rows.push({
+          seller: o.seller, collection: o.collection, tokenId: o.token_id,
+          label: hexToLabel(o.token_id), price: o.price,
+          expires: o.expires || '0', created: o.created || '0',
+        });
+      }
+      if (batch.length < 200) return rows;
     }
-    const now = Date.now();
-    return rows
-      .filter(o => !Number(o.expires) || Number(o.expires) > now)
-      .map(o => ({
-        seller: o.seller, collection: o.collection, tokenId: o.token_id,
-        label: hexToLabel(o.token_id),
-        price: o.price, expires: o.expires || '0', created: o.created || '0',
-      }));
+    throw new Error('Order book exceeded the scan limit');
   });
+}
+
+async function collectionOrders(addr, { browse = false } = {}) {
+  const remembered = caches.get(ORDER_BOOK_KEY);
+  let rows;
+  // Keep ordinary browsing fast during brief RPC stalls. An unlisted/owner
+  // query must await a fresh read before enabling a listing action.
+  if (browse && remembered && Date.now() - remembered.at < 30000) {
+    marketOrders().catch(() => {});
+    rows = remembered.value;
+  } else {
+    try { rows = await marketOrders(); }
+    catch (_) {
+      const error = new Error('Could not verify listings — please try again shortly');
+      error.status = 503;
+      throw error;
+    }
+  }
+  return rows.filter(o => o.collection === addr && activeOrder(o));
+}
+
+function rememberTokenOrder(addr, tokenId, result) {
+  const hit = caches.get(ORDER_BOOK_KEY);
+  if (!hit) return; // Never invent a complete book from one token's result.
+  hit.value = hit.value.filter(o => o.collection !== addr || o.tokenId !== tokenId);
+  if (result?.seller) hit.value.push({
+    seller: result.seller, collection: addr, tokenId, label: hexToLabel(tokenId),
+    price: result.price, expires: result.expires || '0', created: result.created || '0',
+  });
+  // Do not extend the snapshot's lifetime; other tokens still need refreshing.
 }
 
 /* Kuku Playing Cards wrote its on-chain metadata JSON.stringify'd twice:
@@ -1606,6 +1656,11 @@ async function sponsor(txJson, ip) {
   await dev.signTransaction(tx);
   try {
     const receipt = await provider.sendTransaction(tx);
+    if (tx.operations.some(op => op.call_contract?.contract_id === CFG.MARKET_ADDR)) {
+      const book = caches.get(ORDER_BOOK_KEY);
+      if (book) book.at = 0;
+      if (homeSnap) homeSnap.at = 0;
+    }
     // A creator just changed their collection; stop serving the old view.
     for (const addr of new Set(touched)) forgetCollection(addr);
     return { status: 200, body: { ok: true, id: tx.id, receipt: receipt && receipt.receipt } };
@@ -1888,7 +1943,7 @@ const api = {
       return json(res, 200, { ok: true, removed: addr });
     }
     const reg = registry.collections.find(c => c.address === addr) || null;
-    const [info, orders] = await Promise.all([collectionInfo(addr), collectionOrders(addr, { browse: true }).catch(() => [])]);
+    const [info, orders] = await Promise.all([collectionInfo(addr), collectionOrders(addr, { browse: true })]);
     json(res, 200, { registered: !!reg, meta: reg ? { ...reg, image: coverUrl(reg) } : null, info, orders });
   },
 
@@ -1913,7 +1968,7 @@ const api = {
     }
 
     const idx = await collectionIndex(addr, { browse: true });
-    const orders = await collectionOrders(addr, { browse: true }).catch(() => []);
+    const orders = await collectionOrders(addr, { browse: status !== 'unlisted' });
     const listed = new Map(orders.map(o => [o.tokenId, o]));
 
     /* "Mine" is just another filter, so it composes with the traits
@@ -1987,7 +2042,7 @@ const api = {
   async facets(req, res, addr) {
     if (!isAddr(addr)) return json(res, 400, { error: 'bad address' });
     const idx = await collectionIndex(addr, { browse: true });
-    const orders = await collectionOrders(addr, { browse: true }).catch(() => []);
+    const orders = await collectionOrders(addr, { browse: true });
     json(res, 200, {
       facets: idx.facets, indexed: idx.total, partial: idx.partial, loading: !!idx.loading, listed: orders.length,
     });
@@ -2019,6 +2074,7 @@ const api = {
         if (!marketC) return null;
         try {
           const { result } = await marketC.functions.get_order({ collection: addr, token_id: tokenId });
+          rememberTokenOrder(addr, tokenId, result);
           if (!result?.seller) return null;
           return {
             seller: result.seller, price: result.price,
@@ -2116,8 +2172,8 @@ const api = {
     try {
       const r = await fetchJson(CFG.AURVANIA_API + '/api/account', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body), timeoutMs: 15000,
-      });
+        body: JSON.stringify(body), timeoutMs: 15000, redirect: 'error',
+      }, 1);
       return json(res, r.status, r.body || { error: 'The account server sent an unreadable reply' });
     } catch (e) {
       /* Say WHAT failed. A bare "could not reach" sent us hunting the
@@ -2815,7 +2871,7 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(res, p === '/' ? '/index.html' : p);
   } catch (e) {
     console.error('[api]', p, String(e && e.message || e).slice(0, 200));
-    if (!res.headersSent) json(res, 500, { error: 'Internal error' });
+    if (!res.headersSent) json(res, e.status === 503 ? 503 : 500, { error: e.status === 503 ? e.message : 'Internal error' });
   }
 });
 
