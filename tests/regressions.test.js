@@ -9,6 +9,167 @@ const { harness, PAINT, CREW, TOKEN, paint } = require('./fixtures/server-harnes
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const get = (app, url) => fetch(app.base + url).then(r => r.json());
 
+const DUCKS = '1EpeEKtMaH7nV3ZthEk1Emw4F6y6ZEhQNa';
+const DUCK_OWNER = '1JtWgDM3tN2zEFUmhMvSJF43dCGRNsJ83m';
+const duckId = n => '0x' + Buffer.from('DUCK' + String(n).padStart(4, '0')).toString('hex');
+const orderKey = o => '0x' + Buffer.concat([Buffer.from(require('koilib').utils.decodeBase58(o.collection)), Buffer.from(o.token_id.slice(2), 'hex')]).toString('hex');
+const byStorageKey = (a, b) => orderKey(a).length - orderKey(b).length || orderKey(a).localeCompare(orderKey(b));
+
+test('Google, email login, and registration use the canonical bridge without losing credentials', async () => {
+  for (const origin of [' https://aurvania.quest/ ', 'https://www.aurvania.quest', 'https://koinoscrusaders.com', 'https://aurvania.com']) {
+    const requests = [];
+    const app = await harness({ env: { AURVANIA_API: origin }, fetch: async (url, opts) => {
+      requests.push({ url, opts });
+      return new Response(JSON.stringify({ wif: 'fixture-only', address: DUCK_OWNER }), { status: 200 });
+    } });
+    try {
+      assert.equal((await get(app, '/api/config')).aurvania, 'https://aurvania.com');
+      for (const body of [{ action: 'google', idToken: 'fixture-google-token' }, { action: 'login', email: 'fixture@example.test', password: 'fixture-password' }, { action: 'register', email: 'fixture@example.test', password: 'fixture-password' }]) {
+        const r = await fetch(app.base + '/api/account', { method: 'POST', body: JSON.stringify(body) });
+        assert.equal(r.status, 200);
+        assert.equal((await r.json()).address, DUCK_OWNER);
+        const call = requests.at(-1);
+        assert.equal(call.url, 'https://aurvania.com/api/account');
+        assert.equal(call.opts.method, 'POST');
+        assert.deepEqual(JSON.parse(call.opts.body), body);
+      }
+      assert.equal(requests.length, 3);
+    } finally { await app.close(); }
+  }
+});
+
+test('custom account servers remain supported; redirects and invalid credentials never sign in', async () => {
+  let requests = 0, redirected = 0, redirect = true;
+  const upstream = require('http').createServer((req, res) => {
+    if (req.url === '/wrong') { redirected++; res.end('{}'); return; }
+    requests++;
+    if (redirect) { res.writeHead(301, { Location: '/wrong' }); res.end(); }
+    else { res.writeHead(401); res.end(JSON.stringify({ error: 'Google rejected that sign-in — try again' })); }
+  });
+  await new Promise(r => upstream.listen(0, '127.0.0.1', r));
+  const origin = `http://127.0.0.1:${upstream.address().port}`;
+  const app = await harness({ env: { AURVANIA_API: origin }, fetch });
+  try {
+    const login = () => fetch(app.base + '/api/account', { method: 'POST', body: JSON.stringify({ action: 'google', idToken: 'invalid-diagnostic-token' }) });
+    assert.equal((await get(app, '/api/config')).aurvania, origin);
+    const failed = await login();
+    assert.equal(failed.status, 502);
+    assert.equal((await failed.json()).wif, undefined);
+    assert.equal(requests, 1, 'account POST must not be retried');
+    assert.equal(redirected, 0, 'credentials must not follow an unexpected redirect');
+    redirect = false;
+    const invalid = await login();
+    assert.equal(invalid.status, 401);
+    assert.match((await invalid.json()).error, /Google rejected/);
+  } finally {
+    await app.close();
+    upstream.closeAllConnections();
+    await new Promise(r => upstream.close(r));
+  }
+});
+
+test('Block Ducks shows nine active 5 KOIN orders and only Duck 2 as unlisted', async () => {
+  // Public mainnet state observed 2026-09-10: scoped enumeration is empty,
+  // but the global book and individual reads contain all nine live orders.
+  const book = Array.from({ length: 10 }, (_, i) => i + 1).filter(n => n !== 2).map(n => ({
+    collection: DUCKS, seller: DUCK_OWNER, token_id: duckId(n), price: '500000000', expires: '0', created: '1787687486020',
+  }));
+  const app = await harness({ chain: (id, method, args) => {
+    if (method === 'get_orders') return { result: { value: args.collection ? [] : book } };
+    if (id === DUCKS && method === 'total_supply') return { result: { value: '10' } };
+    if (id === DUCKS && method === 'get_tokens') return { result: { token_ids: Array.from({ length: 10 }, (_, i) => duckId(i + 1)) } };
+    if (id === DUCKS && method === 'get_tokens_by_owner') return { result: { token_ids: Array.from({ length: 10 }, (_, i) => duckId(i + 1)) } };
+    if (method === 'get_order') return { result: book.find(o => o.token_id === args.token_id) || {} };
+  } });
+  try {
+    fs.writeFileSync(path.join(app.dataDir, 'index', DUCKS + '.json'), JSON.stringify({ at: Date.now(), value: {
+      tokens: Array.from({ length: 10 }, (_, i) => ({ tokenId: duckId(i + 1), label: `DUCK${i + 1}`, name: `Duck #${i + 1}`, traits: {}, image: null })), facets: [], total: 10, partial: false,
+    } }));
+    const detail = await get(app, `/api/collections/${DUCKS}`);
+    assert.equal(detail.orders.length, 9);
+    assert.ok(detail.orders.every(o => o.price === '500000000'));
+    const grid = await get(app, `/api/collections/${DUCKS}/tokens?status=listed`);
+    assert.equal(grid.matched, 9);
+    assert.ok(grid.tokens.every(t => t.order && t.tokenId !== duckId(2)));
+    const mine = await get(app, `/api/collections/${DUCKS}/tokens?owner=${DUCK_OWNER}&status=unlisted`);
+    assert.deepEqual(mine.tokens.map(t => t.tokenId), [duckId(2)]);
+    assert.equal((await get(app, `/api/collections/${DUCKS}/facets`)).listed, 9);
+    const home = await get(app, '/api/collections');
+    assert.ok(home.collections.every(c => c.listed === 0), 'other collections must not inherit duck orders');
+    assert.equal(app.calls.filter(c => c.method === 'get_orders').length, 1, 'views share one full-book read');
+  } finally { await app.close(); }
+});
+
+test('global order pagination uses full keys across collections and variable token lengths', async () => {
+  const book = Array.from({ length: 205 }, (_, i) => ({
+    collection: i % 2 ? CREW : PAINT, seller: DUCK_OWNER,
+    token_id: '0x' + Buffer.from('N' + String(i).padStart(i < 202 ? 4 : 7, '0')).toString('hex'),
+    price: '100000000', expires: i === 0 ? '1' : '0',
+  })).sort(byStorageKey);
+  const app = await harness({ chain: (_, method, args) => {
+    if (method !== 'get_orders') return;
+    assert.equal(args.collection, undefined);
+    const start = args.start_after ? book.findIndex(o => orderKey(o) === args.start_after) + 1 : 0;
+    if (args.start_after) assert.ok(start > 0, 'cursor includes the address and token bytes');
+    return { result: { value: book.slice(start, start + args.limit) } };
+  } });
+  try {
+    const a = await get(app, `/api/collections/${PAINT}`);
+    const b = await get(app, `/api/collections/${CREW}`);
+    assert.equal(a.orders.length + b.orders.length, 204, 'expired order omitted');
+    assert.ok(a.orders.every(o => o.collection === PAINT));
+    assert.ok(b.orders.every(o => o.collection === CREW));
+    assert.equal(app.calls.filter(c => c.method === 'get_orders').length, 2);
+  } finally { await app.close(); }
+});
+
+test('failed order refresh never exposes listed NFTs to List all', async () => {
+  let failure = false;
+  const app = await harness({ chain: (_, method) => { if (failure && method === 'get_orders') throw new Error('RPC down'); } });
+  try {
+    await app.rebuildIndex(PAINT);
+    await get(app, `/api/collections/${PAINT}/tokens`);
+    app.caches.get('market-orders').at = Date.now() - 11000;
+    failure = true;
+    const unlisted = await fetch(app.base + `/api/collections/${PAINT}/tokens?status=unlisted&owner=${CREW}`);
+    assert.equal(unlisted.status, 503);
+    const body = await unlisted.json();
+    assert.match(body.error, /Could not verify listings/);
+    assert.equal(body.tokens, undefined);
+    app.caches.get('market-orders').at = 0;
+    assert.equal((await fetch(app.base + `/api/collections/${PAINT}`)).status, 503);
+  } finally { await app.close(); }
+});
+
+test('a confirmed individual listing updates the collection grid immediately', async () => {
+  let listed = false;
+  const app = await harness({ chain: (_, method) => {
+    if (method === 'get_order') return { result: listed ? { seller: CREW, price: '500000000', expires: '0' } : {} };
+  } });
+  try {
+    await app.rebuildIndex(PAINT);
+    assert.equal((await get(app, `/api/collections/${PAINT}/tokens?status=listed`)).matched, 0);
+    listed = true;
+    await get(app, `/api/collections/${PAINT}/token/${TOKEN}`);
+    assert.equal((await get(app, `/api/collections/${PAINT}/tokens?status=listed`)).matched, 1);
+    assert.equal((await get(app, `/api/collections/${PAINT}/tokens?status=unlisted`)).matched, 0);
+    listed = false;
+    await get(app, `/api/collections/${PAINT}/token/${TOKEN}`);
+    assert.equal((await get(app, `/api/collections/${PAINT}/tokens?status=listed`)).matched, 0);
+  } finally { await app.close(); }
+});
+
+test('a stuck pagination cursor fails without caching an incomplete order book', async () => {
+  const book = Array.from({ length: 200 }, (_, i) => ({ collection: PAINT, seller: CREW, token_id: '0x' + i.toString(16).padStart(4, '0'), price: '1' }));
+  const app = await harness({ chain: (_, method) => method === 'get_orders' ? { result: { value: book } } : undefined });
+  try {
+    const response = await fetch(app.base + `/api/collections/${PAINT}`);
+    assert.equal(response.status, 503);
+    assert.equal(app.caches.has('market-orders'), false);
+    assert.equal(app.calls.filter(c => c.method === 'get_orders').length, 2);
+  } finally { await app.close(); }
+});
+
 test('real Discover Paint metadata retains embedded SVG and supports image_data', () => {
   const art = dataImage(metadataImage(paint));
   assert.equal(art.type, 'image/svg+xml');
@@ -221,7 +382,7 @@ test('warm grids keep browsing while an order-book refresh is stalled', async ()
   try {
     await app.rebuildIndex(PAINT);
     await get(app, `/api/collections/${PAINT}/tokens`);
-    app.caches.get('orders:' + PAINT).at = 0;
+    app.caches.get('market-orders').at = Date.now() - 11000;
     block = true;
     const start = performance.now();
     assert.equal((await get(app, `/api/collections/${PAINT}/tokens`)).tokens.length, 1);
