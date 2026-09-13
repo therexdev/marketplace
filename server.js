@@ -34,6 +34,8 @@
      ADMIN_KEY          enables POST /api/collections (registry writes)
    ============================================================ */
 'use strict';
+const { verifyLaunch: verifyVaultLaunch } = require('./lib/vault-launch');
+const { latestSales, orderCollections } = require('./lib/collection-order');
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -1136,9 +1138,11 @@ async function refreshHistory({ force = false } = {}) {
         if (n < pageMin) pageMin = n;
         if (n <= history.lastSeq) { reachedKnown = true; continue; }
         const txId = v.trx?.transaction?.id || null;
+        if (v.trx?.receipt?.reverted) continue;
         const evs = v.trx?.receipt?.events || [];
         for (let i = 0; i < evs.length; i++) {
           const ev = evs[i];
+          if (ev.source !== CFG.MARKET_ADDR) continue;
           const type = EVENT_TYPES[ev.name];
           if (!type) continue;
           let data = null;
@@ -1167,6 +1171,7 @@ async function refreshHistory({ force = false } = {}) {
       seq = next;
     }
     if (fresh.length) {
+      history.latestSales = latestSales([...history.events, ...fresh], history.latestSales);
       history.events = dedupeEvents([...fresh, ...history.events])
         .sort((a, b) => b.seq - a.seq || b.idx - a.idx)
         .slice(0, 20000);
@@ -1918,7 +1923,9 @@ const api = {
        stale one refreshes behind this response, not in front of it. */
     if (!homeSnap) await refreshHome().catch(() => {});
     else refreshHome().catch(() => {});
-    json(res, 200, { collections: (homeSnap ? homeSnap.collections : []).map(homeRow) });
+    refreshHistory().catch(() => {});
+    const sales = latestSales(history.events, history.latestSales);
+    json(res, 200, { collections: orderCollections(homeSnap ? homeSnap.collections : [], sales).map(homeRow) });
   },
 
   async collection(req, res, addr) {
@@ -2303,7 +2310,7 @@ const api = {
        when, it is being asked to part with money. */
     const tx = new Transaction({
       signer: key, provider,
-      options: { payer: dev.getAddress(), payee: address, rcLimit: String(80e8) },
+      options: { payer: dev.getAddress(), payee: address, rcLimit: String(body.wallet === 'vault' ? 200e8 : 80e8) },
     });
     for (const op of ops) await tx.pushOperation(op);
     await tx.prepare();
@@ -2329,6 +2336,7 @@ const api = {
     pendingLaunches.set(tx.transaction.id, {
       at: Date.now(), wif: key.getPrivateKey('wif', true), address,
       spec: v, header: JSON.stringify(tx.transaction.header),
+      vault: body.wallet === 'vault', transaction: JSON.parse(JSON.stringify(tx.transaction)),
     });
     for (const [id, p] of pendingLaunches) {
       if (Date.now() - p.at > 900000) pendingLaunches.delete(id);
@@ -2350,17 +2358,24 @@ const api = {
     const signed = body.transaction;
     const pending = signed && signed.id ? pendingLaunches.get(signed.id) : null;
     if (!pending) return json(res, 400, { error: 'That launch has expired — start again' });
+    if (pending.result) return json(res, 200, pending.result);
+    if (pending.submitting) return json(res, 409, { error: 'This launch is already being submitted. Check its collection before starting another.', collection: pending.address });
     // The signed copy must be the one we built, byte for byte.
-    if (JSON.stringify(signed.header) !== pending.header) {
+    if (JSON.stringify(signed.header) !== pending.header || JSON.stringify(signed.operations) !== JSON.stringify(pending.transaction.operations)) {
       return json(res, 400, { error: 'The transaction was altered after it was prepared' });
     }
-    let signers = [];
-    try { signers = await Signer.recoverAddresses(signed); } catch (_) {}
-    if (!signers.includes(pending.spec.owner)) {
-      return json(res, 400, { error: 'The creator has not signed this launch' });
+    pending.submitting = true;
+    try {
+      if (pending.vault) await verifyVaultLaunch(signed, pending, provider);
+      else {
+        const signers = await Signer.recoverAddresses(signed);
+        if (!signers.includes(pending.spec.owner)) throw new Error('The creator has not signed this launch');
+      }
+    } catch (e) {
+      pending.submitting = false;
+      return json(res, 400, { error: String(e.message || e) });
     }
 
-    pendingLaunches.delete(signed.id);
     const key = Signer.fromWif(pending.wif);
     key.provider = provider;
 
@@ -2374,11 +2389,14 @@ const api = {
       id: signed.id,
       header: signed.header,
       operations: signed.operations,
-      signatures: signed.signatures,
+      signatures: pending.vault ? [...pending.transaction.signatures, ...signed.signatures] : signed.signatures,
     };
 
     try {
-      await dev.signTransaction(clean);           // payer
+      const otherSignatures = clean.signatures;
+      clean.signatures = [];
+      await dev.signTransaction(clean);           // payer must be first
+      clean.signatures.push(...otherSignatures);
       const tx = new Transaction({ provider });
       tx.transaction = clean;
       await tx.send();
@@ -2394,6 +2412,8 @@ const api = {
         '| sigs:', (signed.signatures || []).length);
       return json(res, 400, {
         error: `The collection could not be deployed: ${detail}`,
+        collection: pending.address,
+        transactionId: clean.id,
         sent: {
           txKeys: Object.keys(signed),
           headerKeys: Object.keys(signed.header || {}),
@@ -2408,7 +2428,8 @@ const api = {
        is retryable rather than lost. */
     const { initialized, error: lastInitError } = await completeLaunch(pending.address, key, pending.spec);
 
-    json(res, 200, { ok: true, collection: pending.address, initialized, error: lastInitError });
+    pending.result = { ok: true, collection: pending.address, initialized, error: lastInitError };
+    json(res, 200, pending.result);
   },
 
 

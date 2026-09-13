@@ -1,0 +1,321 @@
+{
+  "methods": {
+    "register": {
+      "argument": "modsignwebauthn.register_arguments",
+      "return": "",
+      "description": "",
+      "entry_point": 2272792485,
+      "read_only": false,
+      "entry-point": "0x87780fa5",
+      "read-only": false
+    },
+    "unregister": {
+      "argument": "modsignwebauthn.unregister_arguments",
+      "return": "",
+      "description": "",
+      "entry_point": 1408118084,
+      "read_only": false,
+      "entry-point": "0x53ee2d44",
+      "read-only": false
+    },
+    "is_valid_signature": {
+      "argument": "modsign.is_valid_signature_args",
+      "return": "modsign.is_valid_signature_result",
+      "description": "",
+      "entry_point": 1253549243,
+      "read_only": false,
+      "entry-point": "0x4ab7a4bb",
+      "read-only": false
+    },
+    "get_credentials": {
+      "argument": "modsignwebauthn.get_credentials_args",
+      "return": "modsignwebauthn.get_credentials_result",
+      "description": "Get credential pairs",
+      "entry_point": 2161188462,
+      "read_only": true,
+      "entry-point": "0x80d11e6e",
+      "read-only": true
+    },
+    "get_address_by_credential_id": {
+      "argument": "modsignwebauthn.get_address_by_credential_id_args",
+      "return": "modsignwebauthn.address",
+      "description": "Get address by credential_id",
+      "entry_point": 4100830386,
+      "read_only": true,
+      "entry-point": "0xf46db4b2",
+      "read-only": true
+    },
+    "on_install": {
+      "argument": "modsign.on_install_args",
+      "return": "",
+      "description": "",
+      "entry_point": 3548460345,
+      "read_only": false,
+      "entry-point": "0xd3813539",
+      "read-only": false
+    },
+    "manifest": {
+      "argument": "",
+      "return": "modsign.manifest",
+      "description": "",
+      "entry_point": 95661042,
+      "read_only": true,
+      "entry-point": "0x05b3abf2",
+      "read-only": true
+    },
+    "on_uninstall": {
+      "argument": "modsign.on_uninstall_args",
+      "return": "",
+      "description": "Handles the uninstallation of the module. This method is called when the module is uninstalled. It can include logic for cleanup tasks, such as removing storage or other resources used by the module.",
+      "entry_point": 846787204,
+      "read_only": false,
+      "entry-point": "0x3278f284",
+      "read-only": false
+    },
+    "is_type": {
+      "argument": "modsign.is_type_args",
+      "return": "modsign.is_type_result",
+      "description": "Checks if the module matches a specific type. This method is called to verify if the module is of a certain type. It returns a boolean indicating whether the module type matches the provided type ID.",
+      "entry_point": 3036447173,
+      "read_only": true,
+      "entry-point": "0xb4fc81c5",
+      "read-only": true
+    }
+  },
+  "types": "CqsGChVtb2RzaWdud2ViYXV0aG4ucHJvdG8SD21vZHNpZ253ZWJhdXRobhoUa29pbm9zL29wdGlvbnMucHJvdG8igwEKCmNyZWRlbnRpYWwSIwoNY3JlZGVudGlhbF9pZBgBIAEoCVIMY3JlZGVudGlhbElkEh0KCnB1YmxpY19rZXkYAiABKAxSCXB1YmxpY0tleRISCgRuYW1lGAMgASgJUgRuYW1lEh0KCmNyZWF0ZWRfYXQYBCABKARSCWNyZWF0ZWRBdCJrChJyZWdpc3Rlcl9hcmd1bWVudHMSGAoEdXNlchgBIAEoDEIEgLUYBlIEdXNlchI7CgpjcmVkZW50aWFsGAIgASgLMhsubW9kc2lnbndlYmF1dGhuLmNyZWRlbnRpYWxSCmNyZWRlbnRpYWwiVQoUdW5yZWdpc3Rlcl9hcmd1bWVudHMSGAoEdXNlchgBIAEoDEIEgLUYBlIEdXNlchIjCg1jcmVkZW50aWFsX2lkGAIgASgJUgxjcmVkZW50aWFsSWQiqAEKE2F1dGhlbnRpY2F0aW9uX2RhdGESIwoNY3JlZGVudGlhbF9pZBgBIAEoCVIMY3JlZGVudGlhbElkEhwKCXNpZ25hdHVyZRgCIAEoDFIJc2lnbmF0dXJlEi0KEmF1dGhlbnRpY2F0b3JfZGF0YRgDIAEoDFIRYXV0aGVudGljYXRvckRhdGESHwoLY2xpZW50X2RhdGEYBCABKAxSCmNsaWVudERhdGEiMAoUZ2V0X2NyZWRlbnRpYWxzX2FyZ3MSGAoEdXNlchgBIAEoDEIEgLUYBlIEdXNlciJLChZnZXRfY3JlZGVudGlhbHNfcmVzdWx0EjEKBXZhbHVlGAEgAygLMhsubW9kc2lnbndlYmF1dGhuLmNyZWRlbnRpYWxSBXZhbHVlIkgKIWdldF9hZGRyZXNzX2J5X2NyZWRlbnRpYWxfaWRfYXJncxIjCg1jcmVkZW50aWFsX2lkGAEgASgJUgxjcmVkZW50aWFsSWQiJQoHYWRkcmVzcxIaCgV2YWx1ZRgBIAEoDEIEgLUYBlIFdmFsdWViBnByb3RvMwr5AwoVbW9kc2lnbi9tb2RzaWduLnByb3RvEgdtb2RzaWduGhRrb2lub3Mvb3B0aW9ucy5wcm90byIlCg9vbl9pbnN0YWxsX2FyZ3MSEgoEZGF0YRgBIAEoDFIEZGF0YSInChFvbl91bmluc3RhbGxfYXJncxISCgRkYXRhGAEgASgMUgRkYXRhIicKDGlzX3R5cGVfYXJncxIXCgd0eXBlX2lkGAEgASgNUgZ0eXBlSWQiJgoOaXNfdHlwZV9yZXN1bHQSFAoFdmFsdWUYASABKAhSBXZhbHVlInMKCG1hbmlmZXN0EhIKBG5hbWUYASABKAlSBG5hbWUSFwoHdHlwZV9pZBgCIAEoDVIGdHlwZUlkEhgKB3ZlcnNpb24YAyABKAlSB3ZlcnNpb24SIAoLZGVzY3JpcHRpb24YBCABKAlSC2Rlc2NyaXB0aW9uInAKF2lzX3ZhbGlkX3NpZ25hdHVyZV9hcmdzEhwKBnNlbmRlchgBIAEoDEIEgLUYBlIGc2VuZGVyEhwKCXNpZ25hdHVyZRgCIAEoDFIJc2lnbmF0dXJlEhkKBXR4X2lkGAMgASgMQgSAtRgCUgR0eElkIjEKGWlzX3ZhbGlkX3NpZ25hdHVyZV9yZXN1bHQSFAoFdmFsdWUYASABKAhSBXZhbHVlYgZwcm90bzMKHAoLZW1wdHkucHJvdG8SBWVtcHR5YgZwcm90bzM=",
+  "koilib_types": {
+    "nested": {
+      "modsignwebauthn": {
+        "nested": {
+          "credential": {
+            "fields": {
+              "credential_id": {
+                "type": "string",
+                "id": 1
+              },
+              "public_key": {
+                "type": "bytes",
+                "id": 2
+              },
+              "name": {
+                "type": "string",
+                "id": 3
+              },
+              "created_at": {
+                "type": "uint64",
+                "id": 4
+              }
+            }
+          },
+          "register_arguments": {
+            "fields": {
+              "user": {
+                "type": "bytes",
+                "id": 1,
+                "options": {
+                  "(koinos.btype)": "ADDRESS"
+                }
+              },
+              "credential": {
+                "type": "credential",
+                "id": 2
+              }
+            }
+          },
+          "unregister_arguments": {
+            "fields": {
+              "user": {
+                "type": "bytes",
+                "id": 1,
+                "options": {
+                  "(koinos.btype)": "ADDRESS"
+                }
+              },
+              "credential_id": {
+                "type": "string",
+                "id": 2
+              }
+            }
+          },
+          "authentication_data": {
+            "fields": {
+              "credential_id": {
+                "type": "string",
+                "id": 1
+              },
+              "signature": {
+                "type": "bytes",
+                "id": 2
+              },
+              "authenticator_data": {
+                "type": "bytes",
+                "id": 3
+              },
+              "client_data": {
+                "type": "bytes",
+                "id": 4
+              }
+            }
+          },
+          "get_credentials_args": {
+            "fields": {
+              "user": {
+                "type": "bytes",
+                "id": 1,
+                "options": {
+                  "(koinos.btype)": "ADDRESS"
+                }
+              }
+            }
+          },
+          "get_credentials_result": {
+            "fields": {
+              "value": {
+                "rule": "repeated",
+                "type": "credential",
+                "id": 1
+              }
+            }
+          },
+          "get_address_by_credential_id_args": {
+            "fields": {
+              "credential_id": {
+                "type": "string",
+                "id": 1
+              }
+            }
+          },
+          "address": {
+            "fields": {
+              "value": {
+                "type": "bytes",
+                "id": 1,
+                "options": {
+                  "(koinos.btype)": "ADDRESS"
+                }
+              }
+            }
+          }
+        }
+      },
+      "koinos": {
+        "options": {
+          "go_package": "github.com/koinos/koinos-proto-golang/koinos"
+        },
+        "nested": {
+          "bytes_type": {
+            "values": {
+              "BASE64": 0,
+              "BASE58": 1,
+              "HEX": 2,
+              "BLOCK_ID": 3,
+              "TRANSACTION_ID": 4,
+              "CONTRACT_ID": 5,
+              "ADDRESS": 6
+            }
+          },
+          "_btype": {
+            "oneof": [
+              "btype"
+            ]
+          },
+          "btype": {
+            "type": "bytes_type",
+            "id": 50000,
+            "extend": "google.protobuf.FieldOptions",
+            "options": {
+              "proto3_optional": true
+            }
+          }
+        }
+      },
+      "modsign": {
+        "nested": {
+          "on_install_args": {
+            "fields": {
+              "data": {
+                "type": "bytes",
+                "id": 1
+              }
+            }
+          },
+          "on_uninstall_args": {
+            "fields": {
+              "data": {
+                "type": "bytes",
+                "id": 1
+              }
+            }
+          },
+          "is_type_args": {
+            "fields": {
+              "type_id": {
+                "type": "uint32",
+                "id": 1
+              }
+            }
+          },
+          "is_type_result": {
+            "fields": {
+              "value": {
+                "type": "bool",
+                "id": 1
+              }
+            }
+          },
+          "manifest": {
+            "fields": {
+              "name": {
+                "type": "string",
+                "id": 1
+              },
+              "type_id": {
+                "type": "uint32",
+                "id": 2
+              },
+              "version": {
+                "type": "string",
+                "id": 3
+              },
+              "description": {
+                "type": "string",
+                "id": 4
+              }
+            }
+          },
+          "is_valid_signature_args": {
+            "fields": {
+              "sender": {
+                "type": "bytes",
+                "id": 1,
+                "options": {
+                  "(koinos.btype)": "ADDRESS"
+                }
+              },
+              "signature": {
+                "type": "bytes",
+                "id": 2
+              },
+              "tx_id": {
+                "type": "bytes",
+                "id": 3,
+                "options": {
+                  "(koinos.btype)": "HEX"
+                }
+              }
+            }
+          },
+          "is_valid_signature_result": {
+            "fields": {
+              "value": {
+                "type": "bool",
+                "id": 1
+              }
+            }
+          }
+        }
+      },
+      "empty": {}
+    }
+  }
+}

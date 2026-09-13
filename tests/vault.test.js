@@ -6,6 +6,7 @@ const test = require('node:test');
 const storage = () => { const m = new Map(); return { getItem: k => m.get(k) || null, setItem: (k,v) => m.set(k,v), removeItem: k => m.delete(k) }; };
 function setup(outcome = 'approved') {
   const calls = [], sessionStorage = storage(), localStorage = storage();
+  const launchTx = { id: 'launch-id', header: { payer: 'sponsor' }, operations: [{ call_contract: {} }, { upload_contract: {} }] };
   const context = {
     URL, URLSearchParams, AbortSignal, Event, console, sessionStorage, localStorage,
     location: { origin: 'https://ouro.lifestyle' }, setTimeout: fn => { fn(); },
@@ -15,7 +16,9 @@ function setup(outcome = 'approved') {
     fetch: async (url, opts = {}) => {
       calls.push({ url, body: opts.body ? JSON.parse(opts.body) : null });
       const data = url === '/api/config' ? { network: 'mainnet', rpcs: [], market: 'market', koin: 'koin', sponsor: true, sponsorPayer: 'market-sponsor', launchFeeKoin: 100 }
-        : url.includes('/request-status?') ? { ok: true, status: outcome, txid: outcome === 'approved' ? 'mined-id' : null, error: outcome === 'failed' ? 'chain refused' : null }
+        : url === '/api/launch/prepare' ? { transaction: launchTx }
+        : url === '/api/launch/submit' ? { ok: true, collection: 'launched', initialized: true }
+        : url.includes('/request-status?') ? { ok: true, status: outcome, signedTransaction: outcome === 'signed' ? { ...launchTx, signatures: ['passkey'] } : null, txid: outcome === 'approved' ? 'mined-id' : null, error: outcome === 'failed' ? 'chain refused' : null }
         : url.includes('/status?') ? { ok: true, address: 'account' }
         : { ok: true, requestId: 'request' };
       return { ok: true, json: async () => data };
@@ -36,8 +39,6 @@ test('Vault routes operations directly, returns confirmed id, and never calls ma
   assert.ok(!c.calls.some(x => x.url === '/api/sponsor'));
   assert.equal(c.localStorage.getItem('mk_wif'), null);
   assert.equal(c.vault.load().address, 'account');
-  await assert.rejects(c.wallet.launchCollection({}), /Paid collection launches/);
-  assert.ok(!c.calls.some(x => x.url === '/api/launch/prepare'));
   c.wallet.disconnect(); assert.equal(c.vault.load(), null);
 });
 for (const outcome of ['rejected','failed']) test('Vault propagates ' + outcome + ' without rebroadcasting', async () => {
@@ -55,6 +56,15 @@ test('QR generator encodes the connection locally', () => {
   const qr = require('../public/js/vendor/qrcode');
   const code = qr(0, 'M'); code.addData('https://wallet.usekoinos.com/?connect=session&secret=secret'); code.make();
   assert.ok(code.getModuleCount() > 20); assert.match(code.createSvgTag(), /<svg/);
+});
+test('paid launch waits for Vault signature and submits the approved transaction to OURO', async () => {
+  const c = setup('signed'); await c.wallet.init(); c.wallet.adoptVault(session);
+  assert.equal((await c.wallet.launchCollection({ name: 'Example' })).collection, 'launched');
+  assert.equal(c.calls.find(x => x.url === '/api/launch/prepare').body.wallet, 'vault');
+  assert.equal(c.calls.filter(x => x.url.endsWith('/api/dapp/launch')).length, 1);
+  const submission = c.calls.find(x => x.url === '/api/launch/submit').body.transaction;
+  assert.equal(submission.id, 'launch-id'); assert.deepEqual(submission.signatures, ['passkey']);
+  assert.ok(!c.calls.some(x => x.url === '/api/sponsor'));
 });
 test('buy, cancel and batch listing use Vault and stay within six operations per approval', async () => {
   const c = setup(); await c.wallet.init(); c.wallet.adoptVault(session);

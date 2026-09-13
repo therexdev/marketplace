@@ -23,17 +23,20 @@ const Vault = (() => {
     return pair;
   }
   async function disconnect(session) { save(null); if (session) await json('/api/dapp/disconnect', session).catch(() => {}); }
-  async function send(session, operations) {
-    const request = await json('/api/dapp/request', { ...session, operations, summary: { title: 'OURO marketplace transaction', detail: `${operations.length} contract calls. Review the purchase, listing or mint in OURO before approving.`, network: 'mainnet' } });
+  async function send(session, operations, transaction = null) {
+    const request = transaction
+      ? await json('/api/dapp/launch', { ...session, transaction })
+      : await json('/api/dapp/request', { ...session, operations, summary: { title: 'OURO marketplace transaction', detail: `${operations.length} contract calls. Review the purchase, listing or mint in OURO before approving.`, network: 'mainnet' } });
     const deadline = Math.min(request.expiresAt || Infinity, Date.now() + 10 * 60000);
     while (Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       const result = await json('/api/dapp/request-status?' + query({ ...session, requestId: request.requestId }));
+      if (transaction && result.status === 'signed' && result.signedTransaction) return result.signedTransaction;
       if (result.status === 'approved' && result.txid) return { id: result.txid, sponsored: true };
       if (result.status === 'rejected') throw new Error('Transaction rejected in KOIN Vault');
       if (result.status === 'failed') throw new Error(result.error || 'KOIN Vault could not submit the transaction');
     }
     throw new Error('KOIN Vault approval timed out. Check your wallet and the item before trying again.');
   }
-  return { origin, create, status, save, load, disconnect, send };
+  return { origin, create, status, save, load, disconnect, send, signLaunch: (session, tx) => send(session, null, tx) };
 })();

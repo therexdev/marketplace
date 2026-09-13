@@ -363,10 +363,10 @@ const Wallet = (() => {
       co-signs and deploys. Your signature is what pays the fee. */
   async function launchCollection(spec) {
     if (!account) throw new Error('Connect a wallet first');
-    if (account.kind === 'vault' && Number(cfg.launchFeeKoin) > 0) throw new Error('Paid collection launches require Kondor or an Aurvania account. KOIN Vault supports buying, listing, cancelling and minting.');
+    const connected = account;
     const prep = await (await fetch('/api/launch/prepare', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...spec, owner: account.address }),
+      body: JSON.stringify({ ...spec, owner: connected.address, wallet: connected.kind }),
     })).json();
     if (prep.error) throw new Error(prep.error);
 
@@ -375,13 +375,22 @@ const Wallet = (() => {
        signature, because only you can authorize spending your KOIN. */
     if (prep.launched) return prep;
 
-    const tx = new Transaction({ signer: account.signer, provider });
-    tx.transaction = prep.transaction;
-    await tx.sign();
+    let signed;
+    if (connected.kind === 'vault') {
+      window.dispatchEvent(new Event('vault-approval'));
+      try { signed = await Vault.signLaunch(connected.session, prep.transaction); }
+      finally { window.dispatchEvent(new Event('vault-settled')); }
+      if (account !== connected) throw new Error('Wallet changed during launch approval');
+    } else {
+      const tx = new Transaction({ signer: connected.signer, provider });
+      tx.transaction = prep.transaction;
+      await tx.sign();
+      signed = tx.transaction;
+    }
 
     const done = await (await fetch('/api/launch/submit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transaction: tx.transaction }),
+      body: JSON.stringify({ transaction: signed }),
     })).json();
     if (done.error) {
       const err = new Error(humanError(done.error));

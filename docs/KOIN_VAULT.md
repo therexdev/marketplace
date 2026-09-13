@@ -13,8 +13,21 @@ secp256k1 sponsorship endpoint for these accounts. Sessions are kept in the
 current tab's sessionStorage and checked on reload. Disconnect revokes them.
 
 Free collection launches and free server mints retain their existing flow.
-Paid collection launches require Kondor or an Aurvania account because their
-co-signed contract-upload transaction is outside the current Vault protocol.
+Paid collection launches use a dedicated approval request. Vault validates
+the chain, collection signature, transaction hash, fee sender and operation
+types, then displays the exact KOIN fee, treasury and collection address.
+After passkey approval it returns the signature to OURO without broadcasting.
+OURO independently verifies the passkey against its on-chain registered key,
+checks the exact prepared transaction, adds its sponsor signature first,
+and submits the fee and upload atomically. The 200-mana ceiling is paid by
+OURO's sponsor and is not a fixed charge. Normal wallet requests continue
+to reject uploads. A pending launch cannot be submitted twice concurrently.
+
+The homepage ranks projects by their most recent completed OURO sale.
+Listings and cancellations do not change the rank. Projects without a sale
+retain registry/launch order after the sold projects; new projects append.
+The latest sale per collection is persisted separately from the bounded
+event list. History refreshes in the background without blocking browsing.
 
 ## Deployment
 

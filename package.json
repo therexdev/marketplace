@@ -5,7 +5,7 @@
   "description": "OURO (ouro.lifestyle) \u2014 an NFT marketplace for every KCS-2 collection on Koinos. KOIN prices, FREE platform fee (0%), royalties honored, mana sponsored.",
   "main": "server.js",
   "scripts": {
-    "pretest": "node --test tests/vault.test.js",
+    "pretest": "node --test tests/vault.test.js tests/vault-launch.test.js tests/collection-order.test.js",
     "start": "node server.js",
     "build": "echo \"no build step \u2014 OURO serves static files and server.js directly\"",
     "test": "node tests/market-check.js",
