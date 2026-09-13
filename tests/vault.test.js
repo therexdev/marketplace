@@ -6,15 +6,25 @@ const test = require('node:test');
 const storage = () => { const m = new Map(); return { getItem: k => m.get(k) || null, setItem: (k,v) => m.set(k,v), removeItem: k => m.delete(k) }; };
 function setup(outcome = 'approved', pairUri = 'https://koinvault.app/?connect=session&secret=secret') {
   const calls = [], sessionStorage = storage(), localStorage = storage();
+  const timers = new Map(), events = new EventTarget(), document = new EventTarget();
+  document.hidden = false;
+  let timerId = 0;
+  const network = { status: 200, connected: true, address: 'account', wait: null };
   const launchTx = { id: 'launch-id', header: { payer: 'sponsor' }, operations: [{ call_contract: {} }, { upload_contract: {} }] };
   const context = {
     URL, URLSearchParams, AbortSignal, Event, console, sessionStorage, localStorage,
     location: { origin: 'https://ouro.lifestyle' }, setTimeout: fn => { fn(); },
-    window: { dispatchEvent() {} }, Provider: class {},
+    document, setInterval: fn => { timers.set(++timerId, fn); return timerId; }, clearInterval: id => timers.delete(id),
+    window: { dispatchEvent: event => events.dispatchEvent(event), addEventListener: (...args) => events.addEventListener(...args), removeEventListener: (...args) => events.removeEventListener(...args) }, Provider: class {},
     utils: { tokenAbi: {} },
     Contract: class { constructor({ id }) { this.id = id; } encodeOperation({ name, args }) { return { call_contract: { contract_id: this.id, entry_point: name, args: JSON.stringify(args) } }; } },
     fetch: async (url, opts = {}) => {
       calls.push({ url, body: opts.body ? JSON.parse(opts.body) : null });
+      if (url.includes('/dapp/status?')) {
+        const reply = { ...network };
+        if (reply.wait) await reply.wait;
+        return { ok: reply.status === 200, status: reply.status, json: async () => ({ ok: reply.status === 200, connected: reply.connected, address: reply.address, error: 'connection unavailable' }) };
+      }
       const data = url === '/api/config' ? { network: 'mainnet', rpcs: [], market: 'market', koin: 'koin', sponsor: true, sponsorPayer: 'market-sponsor', launchFeeKoin: 100 }
         : url.endsWith('/api/dapp/create') ? { ok: true, sessionId: 'session', secret: 'secret', uri: pairUri, expiresAt: Date.now() + 60000 }
         : url === '/api/launch/prepare' ? { transaction: launchTx }
@@ -29,7 +39,7 @@ function setup(outcome = 'approved', pairUri = 'https://koinvault.app/?connect=s
   vm.runInContext(fs.readFileSync('public/js/vault.js','utf8') + '\nglobalThis.vault = Vault;', context);
   const wallet = fs.readFileSync('public/js/wallet.js','utf8').replace('init, onChange, connectKondor,', 'send, init, onChange, connectKondor,');
   vm.runInContext(wallet + '\nglobalThis.wallet = Wallet;', context);
-  return { ...context, calls };
+  return { ...context, calls, network, timers, events };
 }
 const session = { sessionId: 'session', secret: 'secret', address: 'account' };
 test('Vault routes operations directly, returns confirmed id, and never calls marketplace sponsor', async () => {
@@ -100,4 +110,40 @@ test('old-domain sessions require a fresh connection after the domain update', a
   c.sessionStorage.setItem('ouro:vault:v1', JSON.stringify(session));
   await c.wallet.init();
   assert.equal(c.wallet.account, null); assert.equal(c.vault.load(), null);
+});
+
+const flush = () => new Promise(resolve => setImmediate(resolve));
+test('wallet-side revocation clears the OURO address and saved session without a transaction', async () => {
+  const c = setup(); await c.wallet.init();
+  let changed = 0; c.wallet.onChange(() => changed++);
+  c.wallet.adoptVault(session); await flush();
+  c.network.status = 404;
+  for (const check of c.timers.values()) await check();
+  assert.equal(c.wallet.account, null); assert.equal(c.vault.load(), null);
+  assert.equal(c.localStorage.getItem('mk_kind'), null);
+  assert.equal(changed, 2, 'The normal UI change handler repaints the disconnected state');
+  assert.equal(c.timers.size, 0);
+});
+test('transient outages preserve the session and returning to a tab checks revocation immediately', async () => {
+  const c = setup(); await c.wallet.init(); c.wallet.adoptVault(session); await flush();
+  c.network.status = 503;
+  for (const check of c.timers.values()) await check();
+  assert.equal(c.wallet.account.address, session.address);
+  c.document.hidden = true; c.network.status = 404;
+  const count = c.calls.length;
+  for (const check of c.timers.values()) await check();
+  assert.equal(c.calls.length, count);
+  c.document.hidden = false; c.document.dispatchEvent(new Event('visibilitychange')); await flush();
+  assert.equal(c.wallet.account, null);
+});
+test('a late response from an old session cannot disconnect a newly paired wallet', async () => {
+  const c = setup(); await c.wallet.init();
+  let release; c.network.wait = new Promise(resolve => { release = resolve; }); c.network.status = 404;
+  c.wallet.adoptVault(session);
+  c.network.wait = null; c.network.status = 200;
+  c.wallet.adoptVault({ ...session, sessionId: 'new-session' }); await flush();
+  release(); await flush();
+  assert.equal(c.wallet.account.session.sessionId, 'new-session');
+  assert.equal(c.timers.size, 1);
+  c.wallet.disconnect();
 });

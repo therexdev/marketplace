@@ -5,15 +5,48 @@ const Vault = (() => {
   const key = 'ouro:vault:v2:' + origin;
   async function json(path, body) {
     const r = await fetch(origin + path, {
+      cache: 'no-store',
       ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(20000),
     });
     const data = await r.json().catch(() => ({}));
-    if (!r.ok || !data.ok) throw new Error(data.error || 'KOIN Vault is unavailable. Please try again.');
+    if (!r.ok || !data.ok) {
+      const error = new Error(data.error || 'KOIN Vault is unavailable. Please try again.');
+      error.status = r.status;
+      throw error;
+    }
     return data;
   }
   const query = value => new URLSearchParams(value).toString();
   const status = session => json('/api/dapp/status?' + query(session));
+  const isDisconnected = error => error?.status === 404 || error?.status === 410;
+  function watch(session, onDisconnect) {
+    let stopped = false, checking = false;
+    const stop = () => {
+      stopped = true; clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+      window.removeEventListener('online', check);
+    };
+    const ended = () => { if (!stopped) { stop(); onDisconnect(); } };
+    async function check() {
+      if (stopped || checking || document.hidden) return;
+      checking = true;
+      try {
+        const live = await status(session);
+        if (!live.connected || live.address !== session.address) ended();
+      } catch (error) {
+        // An outage is not a revocation. Retry without discarding the session.
+        if (isDisconnected(error)) ended();
+      } finally { checking = false; }
+    }
+    const timer = setInterval(check, 2000);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    void check();
+    return stop;
+  }
   function save(session) { try { session ? sessionStorage.setItem(key, JSON.stringify(session)) : sessionStorage.removeItem(key); } catch (_) {} }
   function load() { try { const s = JSON.parse(sessionStorage.getItem(key)); return s?.sessionId && s?.secret && s?.address ? s : null; } catch (_) { return null; } }
   async function create() {
@@ -39,5 +72,5 @@ const Vault = (() => {
     }
     throw new Error('KOIN Vault approval timed out. Check your wallet and the item before trying again.');
   }
-  return { origin, create, status, save, load, disconnect, send, signLaunch: (session, tx) => send(session, null, tx) };
+  return { origin, create, status, watch, isDisconnected, save, load, disconnect, send, signLaunch: (session, tx) => send(session, null, tx) };
 })();

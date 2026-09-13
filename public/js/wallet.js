@@ -29,6 +29,8 @@ const Wallet = (() => {
   let account = null;          // { kind: 'kondor'|'hosted', address, signer }
   let provider = null;
   const listeners = [];
+  let stopVaultWatch = null;
+  function stopWatchingVault() { if (stopVaultWatch) stopVaultWatch(); stopVaultWatch = null; }
 
   async function init() {
     cfg = await (await fetch('/api/config')).json();
@@ -39,7 +41,7 @@ const Wallet = (() => {
     if (kind === 'vault' && vault) {
       try {
         const live = await Vault.status(vault);
-        if (live.address === vault.address) adoptVault(vault);
+        if (live.connected && live.address === vault.address) adoptVault(vault);
         else Vault.save(null);
       } catch (_) { Vault.save(null); }
     }
@@ -56,6 +58,7 @@ const Wallet = (() => {
   function onChange(fn) { listeners.push(fn); }
 
   function adoptWif(wif) {
+    stopWatchingVault();
     Vault.disconnect(Vault.load());
     const signer = Signer.fromWif(wif);
     signer.provider = provider;
@@ -72,6 +75,7 @@ const Wallet = (() => {
     if (!accounts || !accounts.length) throw new Error('Kondor returned no accounts');
     const address = accounts[0].address;
     const signer = window.kondor.getSigner(address);
+    stopWatchingVault();
     Vault.disconnect(Vault.load());
     account = { kind: 'kondor', address, signer };
     localStorage.setItem(LS_KIND, 'kondor');
@@ -97,6 +101,7 @@ const Wallet = (() => {
   }
 
   function disconnect() {
+    stopWatchingVault();
     Vault.disconnect(account?.session || Vault.load());
     account = null;
     localStorage.removeItem(LS_WIF);
@@ -107,10 +112,20 @@ const Wallet = (() => {
   /* ---------------- transactions ---------------- */
   function adoptVault(session) {
     if (cfg.network !== 'mainnet') throw new Error('KOIN Vault connects to Koinos mainnet only');
-    account = { kind: 'vault', address: session.address, session };
+    stopWatchingVault();
+    const connected = { kind: 'vault', address: session.address, session };
+    account = connected;
     Vault.save(session);
     localStorage.removeItem(LS_WIF);
     localStorage.setItem(LS_KIND, 'vault');
+    stopVaultWatch = Vault.watch(session, () => {
+      if (account !== connected) return;
+      // The relay already revoked it; clear only this website's wallet state.
+      stopWatchingVault(); Vault.save(null); account = null;
+      localStorage.removeItem(LS_KIND); localStorage.removeItem(LS_WIF);
+      window.dispatchEvent(new Event('vault-settled'));
+      emit();
+    });
     emit();
     return account;
   }
