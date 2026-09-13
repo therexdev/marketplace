@@ -36,24 +36,36 @@ async function api(path) {
 
 /* ---------------- modal ---------------- */
 
+let modalCleanup = null;
 function modal(html) {
+  if (modalCleanup) { modalCleanup(); modalCleanup = null; }
   $('#modal').innerHTML = html;
   $('#modal-back').classList.remove('hidden');
   return $('#modal');
 }
-function closeModal() { $('#modal-back').classList.add('hidden'); }
+function closeModal() {
+  if (modalCleanup) { modalCleanup(); modalCleanup = null; }
+  $('#modal-back').classList.add('hidden');
+}
 $('#modal-back').addEventListener('mousedown', (e) => { if (e.target === $('#modal-back')) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
 /* ---------------- connect ---------------- */
 
+window.addEventListener('vault-approval', () => {
+  const el = document.createElement('div');
+  el.id = 'vault-approval-notice'; el.className = 'toast';
+  el.innerHTML = 'Approve this transaction in <a href="https://wallet.usekoinos.com/" target="_blank" rel="noopener noreferrer">KOIN Vault</a>. Keep the wallet open while it confirms.';
+  $('#toasts').appendChild(el);
+});
+window.addEventListener('vault-settled', () => { document.querySelectorAll('#vault-approval-notice').forEach(el => el.remove()); });
+
 function connectModal() {
   const m = modal(`
     <h3>Connect</h3>
-    <p class="sub">Kondor if you hold your own keys — or the same Google /
-    email sign-in as Aurvania, which opens the <b>same wallet</b> you have
-    in the game. Mana fees are on us either way.</p>
+    <p class="sub">Connect KOIN Vault or Kondor, or sign in with your Aurvania account. Mana is sponsored.</p>
     <div class="stack">
+      <button class="btn big" id="w-vault">KOIN Vault · scan to connect</button>
       <button class="btn big" id="w-kondor">🦅 Kondor wallet</button>
       <div class="g-wrap" id="w-google-wrap">
         <button class="btn big g-face" type="button" tabindex="-1" aria-hidden="true">
@@ -74,6 +86,7 @@ function connectModal() {
       <div class="alt">New here? <button class="linkish" id="w-register">Create an account</button></div>
     </div>
   `);
+  m.querySelector('#w-vault').onclick = vaultModal;
   m.querySelector('#w-kondor').onclick = async () => {
     try { await Wallet.connectKondor(); closeModal(); toast('Kondor connected', 'good'); }
     catch (e) { toast(esc(e.message), 'bad'); }
@@ -141,6 +154,35 @@ function connectModal() {
   m.querySelector('#w-register').onclick = emailAction('register');
 }
 
+async function vaultModal() {
+  if (Wallet.cfg.network !== 'mainnet') return toast('KOIN Vault supports mainnet only', 'bad');
+  const m = modal('<h3>Connect KOIN Vault</h3><p class="sub" id="vault-state">Creating your connection…</p><div id="vault-qr"></div><div id="vault-link"></div><button class="btn" id="vault-cancel">Cancel</button>');
+  let active = true, paired = false, pair = null;
+  modalCleanup = () => { active = false; if (pair && !paired) Vault.disconnect(pair); };
+  m.querySelector('#vault-cancel').onclick = closeModal;
+  try {
+    pair = await Vault.create();
+    if (!active) { Vault.disconnect(pair); return; }
+    const qr = qrcode(0, 'M'); qr.addData(pair.uri); qr.make();
+    m.querySelector('#vault-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
+    m.querySelector('#vault-qr').style.cssText = 'max-width:280px;margin:16px auto;background:white;padding:8px';
+    m.querySelector('#vault-state').textContent = 'Open KOIN Vault → Connect → scan this code, then approve with your passkey.';
+    const link = document.createElement('a');
+    link.href = pair.uri; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'btn'; link.textContent = 'Open KOIN Vault on this device';
+    m.querySelector('#vault-link').appendChild(link);
+    while (active && Date.now() < pair.expiresAt) {
+      const live = await Vault.status({ sessionId: pair.sessionId, secret: pair.secret });
+      if (!active) return;
+      if (live.address) {
+        Wallet.adoptVault({ sessionId: pair.sessionId, secret: pair.secret, address: live.address });
+        paired = true; closeModal(); toast('KOIN Vault connected', 'good'); return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    if (active) throw new Error('Connection expired. Close this window and connect again.');
+  } catch (e) { if (active) m.querySelector('#vault-state').textContent = e.message; }
+}
+
 function walletModal() {
   const a = Wallet.account;
   const m = modal(`
@@ -148,7 +190,7 @@ function walletModal() {
     <div class="wallet-row">
       <div>
         <div class="mono" style="font-size:13px;word-break:break-all">${esc(a.address)}</div>
-        <div class="sub" style="margin:4px 0 0">${a.kind === 'kondor' ? 'Kondor' : 'Aurvania account (hosted key)'} · <span id="wm-bal"><span class="spin"></span></span></div>
+        <div class="sub" style="margin:4px 0 0">${a.kind === 'vault' ? 'KOIN Vault' : a.kind === 'kondor' ? 'Kondor' : 'Aurvania account (hosted key)'} · <span id="wm-bal"><span class="spin"></span></span></div>
       </div>
     </div>
     <div class="stack">

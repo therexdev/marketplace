@@ -35,6 +35,14 @@ const Wallet = (() => {
     provider = new Provider(cfg.rpcs || [cfg.rpc]);
     // Wake a remembered account.
     const kind = localStorage.getItem(LS_KIND);
+    const vault = Vault.load();
+    if (kind === 'vault' && vault) {
+      try {
+        const live = await Vault.status(vault);
+        if (live.address === vault.address) adoptVault(vault);
+        else Vault.save(null);
+      } catch (_) { Vault.save(null); }
+    }
     if (kind === 'hosted' && localStorage.getItem(LS_WIF)) {
       try { adoptWif(localStorage.getItem(LS_WIF)); } catch (_) { localStorage.removeItem(LS_WIF); }
     } else if (kind === 'kondor' && window.kondor) {
@@ -48,6 +56,7 @@ const Wallet = (() => {
   function onChange(fn) { listeners.push(fn); }
 
   function adoptWif(wif) {
+    Vault.disconnect(Vault.load());
     const signer = Signer.fromWif(wif);
     signer.provider = provider;
     account = { kind: 'hosted', address: signer.getAddress(), signer };
@@ -63,6 +72,7 @@ const Wallet = (() => {
     if (!accounts || !accounts.length) throw new Error('Kondor returned no accounts');
     const address = accounts[0].address;
     const signer = window.kondor.getSigner(address);
+    Vault.disconnect(Vault.load());
     account = { kind: 'kondor', address, signer };
     localStorage.setItem(LS_KIND, 'kondor');
     localStorage.removeItem(LS_WIF);
@@ -87,6 +97,7 @@ const Wallet = (() => {
   }
 
   function disconnect() {
+    Vault.disconnect(account?.session || Vault.load());
     account = null;
     localStorage.removeItem(LS_WIF);
     localStorage.removeItem(LS_KIND);
@@ -94,6 +105,15 @@ const Wallet = (() => {
   }
 
   /* ---------------- transactions ---------------- */
+  function adoptVault(session) {
+    if (cfg.network !== 'mainnet') throw new Error('KOIN Vault connects to Koinos mainnet only');
+    account = { kind: 'vault', address: session.address, session };
+    Vault.save(session);
+    localStorage.removeItem(LS_WIF);
+    localStorage.setItem(LS_KIND, 'vault');
+    emit();
+    return account;
+  }
 
   let abis = null;
   async function loadAbis() {
@@ -156,6 +176,17 @@ const Wallet = (() => {
       Sponsored by default; self-paid through Kondor as the fallback. */
   async function send(ops, { rcLimit = rcFor(ops.length) } = {}) {
     if (!account) throw new Error('Connect a wallet first');
+
+    if (account.kind === 'vault') {
+      const connected = account;
+      window.dispatchEvent(new Event('vault-approval'));
+      try { return await Vault.send(connected.session, ops); }
+      catch (e) {
+        if (/connection not found|connection.*expired/i.test(e.message) && account === connected) disconnect();
+        throw e;
+      }
+      finally { window.dispatchEvent(new Event('vault-settled')); }
+    }
 
     if (cfg.sponsor && cfg.sponsorPayer) {
       const tx = new Transaction({
@@ -332,6 +363,7 @@ const Wallet = (() => {
       co-signs and deploys. Your signature is what pays the fee. */
   async function launchCollection(spec) {
     if (!account) throw new Error('Connect a wallet first');
+    if (account.kind === 'vault' && Number(cfg.launchFeeKoin) > 0) throw new Error('Paid collection launches require Kondor or an Aurvania account. KOIN Vault supports buying, listing, cancelling and minting.');
     const prep = await (await fetch('/api/launch/prepare', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...spec, owner: account.address }),
@@ -368,7 +400,7 @@ const Wallet = (() => {
   }
 
   return {
-    init, onChange, connectKondor, hostedLogin, disconnect, adoptWif,
+    init, onChange, connectKondor, hostedLogin, disconnect, adoptWif, adoptVault,
     listToken, buyToken, cancelOrder, mintToken, serverMint, listTokens, launchCollection,
     get account() { return account; },
     get cfg() { return cfg; },

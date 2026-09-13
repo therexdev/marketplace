@@ -1878,6 +1878,7 @@ const api = {
       sponsor: !!dev, sponsorPayer: dev ? dev.getAddress() : null,
       // Our own env first: the bridge is a convenience, not a dependency.
       mintFeeKoin: CFG.MINT_FEE_KOIN,
+      launchFeeKoin: CFG.LAUNCH_FEE_KOIN,
       googleClientId: CFG.GOOGLE_CLIENT_ID || gi.googleClientId || null,
       aurvania: CFG.AURVANIA_API,
     });

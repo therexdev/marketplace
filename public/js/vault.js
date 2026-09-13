@@ -1,0 +1,39 @@
+/* KOIN Vault's QR relay. Session secrets stay in this tab; keys stay in Vault. */
+'use strict';
+const Vault = (() => {
+  const origin = 'https://wallet.usekoinos.com';
+  const key = 'ouro:vault:v1';
+  async function json(path, body) {
+    const r = await fetch(origin + path, {
+      ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(20000),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error(data.error || 'KOIN Vault is unavailable. Please try again.');
+    return data;
+  }
+  const query = value => new URLSearchParams(value).toString();
+  const status = session => json('/api/dapp/status?' + query(session));
+  function save(session) { try { session ? sessionStorage.setItem(key, JSON.stringify(session)) : sessionStorage.removeItem(key); } catch (_) {} }
+  function load() { try { const s = JSON.parse(sessionStorage.getItem(key)); return s?.sessionId && s?.secret && s?.address ? s : null; } catch (_) { return null; } }
+  async function create() {
+    const pair = await json('/api/dapp/create', { name: 'OURO', icon: location.origin + '/assets/mark.svg' });
+    const uri = new URL(pair.uri);
+    if (uri.origin !== origin) throw new Error('KOIN Vault returned an unexpected wallet address');
+    return pair;
+  }
+  async function disconnect(session) { save(null); if (session) await json('/api/dapp/disconnect', session).catch(() => {}); }
+  async function send(session, operations) {
+    const request = await json('/api/dapp/request', { ...session, operations, summary: { title: 'OURO marketplace transaction', detail: `${operations.length} contract calls. Review the purchase, listing or mint in OURO before approving.`, network: 'mainnet' } });
+    const deadline = Math.min(request.expiresAt || Infinity, Date.now() + 10 * 60000);
+    while (Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await json('/api/dapp/request-status?' + query({ ...session, requestId: request.requestId }));
+      if (result.status === 'approved' && result.txid) return { id: result.txid, sponsored: true };
+      if (result.status === 'rejected') throw new Error('Transaction rejected in KOIN Vault');
+      if (result.status === 'failed') throw new Error(result.error || 'KOIN Vault could not submit the transaction');
+    }
+    throw new Error('KOIN Vault approval timed out. Check your wallet and the item before trying again.');
+  }
+  return { origin, create, status, save, load, disconnect, send };
+})();
