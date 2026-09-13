@@ -55,7 +55,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 window.addEventListener('vault-approval', () => {
   const el = document.createElement('div');
   el.id = 'vault-approval-notice'; el.className = 'toast';
-  el.innerHTML = 'Approve this transaction in <a href="https://wallet.usekoinos.com/" target="_blank" rel="noopener noreferrer">KOIN Vault</a>. Keep the wallet open while it confirms.';
+  el.innerHTML = 'Approve this transaction in <a href="https://koinvault.app/" target="_blank" rel="noopener noreferrer">KOIN Vault</a>. Keep the wallet open while it confirms.';
   $('#toasts').appendChild(el);
 });
 window.addEventListener('vault-settled', () => { document.querySelectorAll('#vault-approval-notice').forEach(el => el.remove()); });
@@ -166,7 +166,7 @@ async function vaultModal() {
     const qr = qrcode(0, 'M'); qr.addData(pair.uri); qr.make();
     m.querySelector('#vault-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 16, scalable: true });
     m.querySelector('#vault-qr').style.cssText = 'max-width:280px;margin:16px auto;background:white;padding:8px';
-    m.querySelector('#vault-state').textContent = 'Open KOIN Vault → Connect → scan this code, then approve with your passkey.';
+    m.querySelector('#vault-state').textContent = 'Scan this code with your phone camera, or open KOIN Vault below. Sign in and approve the connection with your passkey.';
     const link = document.createElement('a');
     link.href = pair.uri; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'btn'; link.textContent = 'Open KOIN Vault on this device';
     m.querySelector('#vault-link').appendChild(link);

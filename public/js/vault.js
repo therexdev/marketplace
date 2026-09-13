@@ -1,8 +1,8 @@
 /* KOIN Vault's QR relay. Session secrets stay in this tab; keys stay in Vault. */
 'use strict';
 const Vault = (() => {
-  const origin = 'https://wallet.usekoinos.com';
-  const key = 'ouro:vault:v1';
+  const origin = 'https://koinvault.app';
+  const key = 'ouro:vault:v2:' + origin;
   async function json(path, body) {
     const r = await fetch(origin + path, {
       ...(body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
@@ -19,7 +19,8 @@ const Vault = (() => {
   async function create() {
     const pair = await json('/api/dapp/create', { name: 'OURO', icon: location.origin + '/assets/mark.svg' });
     const uri = new URL(pair.uri);
-    if (uri.origin !== origin) throw new Error('KOIN Vault returned an unexpected wallet address');
+    if (uri.origin !== origin || uri.pathname !== '/' || uri.username || uri.password
+      || uri.searchParams.get('connect') !== pair.sessionId || uri.searchParams.get('secret') !== pair.secret) throw new Error('KOIN Vault returned an unexpected wallet address');
     return pair;
   }
   async function disconnect(session) { save(null); if (session) await json('/api/dapp/disconnect', session).catch(() => {}); }

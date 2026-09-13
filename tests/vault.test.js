@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const test = require('node:test');
 const storage = () => { const m = new Map(); return { getItem: k => m.get(k) || null, setItem: (k,v) => m.set(k,v), removeItem: k => m.delete(k) }; };
-function setup(outcome = 'approved') {
+function setup(outcome = 'approved', pairUri = 'https://koinvault.app/?connect=session&secret=secret') {
   const calls = [], sessionStorage = storage(), localStorage = storage();
   const launchTx = { id: 'launch-id', header: { payer: 'sponsor' }, operations: [{ call_contract: {} }, { upload_contract: {} }] };
   const context = {
@@ -16,6 +16,7 @@ function setup(outcome = 'approved') {
     fetch: async (url, opts = {}) => {
       calls.push({ url, body: opts.body ? JSON.parse(opts.body) : null });
       const data = url === '/api/config' ? { network: 'mainnet', rpcs: [], market: 'market', koin: 'koin', sponsor: true, sponsorPayer: 'market-sponsor', launchFeeKoin: 100 }
+        : url.endsWith('/api/dapp/create') ? { ok: true, sessionId: 'session', secret: 'secret', uri: pairUri, expiresAt: Date.now() + 60000 }
         : url === '/api/launch/prepare' ? { transaction: launchTx }
         : url === '/api/launch/submit' ? { ok: true, collection: 'launched', initialized: true }
         : url.includes('/request-status?') ? { ok: true, status: outcome, signedTransaction: outcome === 'signed' ? { ...launchTx, signatures: ['passkey'] } : null, txid: outcome === 'approved' ? 'mined-id' : null, error: outcome === 'failed' ? 'chain refused' : null }
@@ -54,7 +55,7 @@ test('Vault restores only a session whose live address still matches', async () 
 });
 test('QR generator encodes the connection locally', () => {
   const qr = require('../public/js/vendor/qrcode');
-  const code = qr(0, 'M'); code.addData('https://wallet.usekoinos.com/?connect=session&secret=secret'); code.make();
+  const code = qr(0, 'M'); code.addData('https://koinvault.app/?connect=session&secret=secret'); code.make();
   assert.ok(code.getModuleCount() > 20); assert.match(code.createSvgTag(), /<svg/);
 });
 test('paid launch waits for Vault signature and submits the approved transaction to OURO', async () => {
@@ -75,4 +76,28 @@ test('buy, cancel and batch listing use Vault and stay within six operations per
   assert.deepEqual(requests.map(x => x.body.operations.length), [2, 1, 6, 1]);
   assert.equal(requests[0].body.operations[0].call_contract.contract_id, 'koin');
   assert.equal(JSON.parse(requests[0].body.operations[0].call_contract.args).value, '100');
+});
+
+test('pairing uses koinvault.app for its API and QR, with matching session parameters', async () => {
+  const c = setup(); const pair = await c.vault.create();
+  assert.equal(new URL(pair.uri).origin, 'https://koinvault.app');
+  assert.equal(c.calls[0].url, 'https://koinvault.app/api/dapp/create');
+  assert.equal(c.calls[0].body.name, 'OURO');
+  await c.vault.status(pair);
+  assert.ok(c.calls.at(-1).url.startsWith('https://koinvault.app/api/dapp/status?'));
+});
+test('pairing rejects old-domain, hostile and mismatched connection links', async () => {
+  for (const uri of [
+    'https://wallet.usekoinos.com/?connect=session&secret=secret',
+    'https://koinvault.app.evil.example/?connect=session&secret=secret',
+    'https://koinvault.app/?connect=different&secret=secret',
+    'https://koinvault.app/?connect=session&secret=different',
+    'https://koinvault.app/other?connect=session&secret=secret',
+  ]) await assert.rejects(setup('approved', uri).vault.create(), /unexpected wallet address/);
+});
+test('old-domain sessions require a fresh connection after the domain update', async () => {
+  const c = setup(); c.localStorage.setItem('mk_kind', 'vault');
+  c.sessionStorage.setItem('ouro:vault:v1', JSON.stringify(session));
+  await c.wallet.init();
+  assert.equal(c.wallet.account, null); assert.equal(c.vault.load(), null);
 });
