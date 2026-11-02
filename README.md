@@ -218,9 +218,13 @@ Artwork uses same-origin `/img/c/:address` and `/img/t/:address/:tokenId` routes
   complete winning gateway response enters the cache; failed and losing downloads
   are removed. Upload and embedded-data limits are unchanged.
 * PNG/JPEG and GIF previews are generated in worker threads so image work does
-  not stop the HTTP server. GIF grids use a small still of the first frame; opening
-  an NFT loads the unchanged animated original. A failed GIF preview never sends
-  the large animation to every grid card. GIF decoding is bounded to 16 megapixels.
+  not stop the HTTP server. GIF grids animate with previews capped at 240px,
+  80 frames (about six per second), and 2 MiB. Loop duration, repeat count,
+  transparency and partial-frame disposal are retained. Opening an NFT loads
+  the unchanged animated original. A failed GIF preview never sends the large
+  animation to every grid card. GIF decoding is bounded to 16 megapixels and
+  256 million processed pixels, with at most two image workers running at once.
+  Animated variants have a separate cache key from the former still previews.
   WebP retains its original and SVG remains vector artwork.
 * Artwork that is still downloading shows a loading placeholder and retries with
   bounded backoff over several minutes. Exhausted retries show “Artwork unavailable”

@@ -7,9 +7,9 @@
 const $ = (s) => document.querySelector(s);
 const view = $('#view');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-/* Grid tiles ask the art cache for a 480px derivative — a tile never
-   needs the multi-MB original. Full art stays for the token page. */
-const thumb = (u) => u && (u.startsWith('/img/') || u.startsWith('/u/')) ? u + (u.includes('?') ? '&' : '?') + 'w=480&v=2' : u;
+/* Grid tiles ask for a bounded preview: up to 480px for stills and
+   smaller animated GIFs. Full-quality art stays for the token page. */
+const thumb = (u) => u && (u.startsWith('/img/') || u.startsWith('/u/')) ? u + (u.includes('?') ? '&' : '?') + 'w=480&v=3' : u;
 
 const KOIN = (sats) => {
   const n = Number(BigInt(sats || '0')) / 1e8;

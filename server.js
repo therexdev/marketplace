@@ -559,12 +559,10 @@ async function fetchArt(src) {
 
 /* ---------------- thumbnails ----------------
 
-   A grid tile does not need the 1.6MB original — it needs 50KB that
-   look identical at 300px. Derivatives are cut once with jimp (pure
-   JS, vendored like everything else — a deploy cannot lose it), kept
-   beside the original in the cache, and regenerating after a sweep is
-   automatic. GIF previews decode only the first frame; the unchanged
-   animation is reserved for the full-size token route. */
+   Grid previews are generated once in pure-JS workers, cached beside
+   the original, and regenerated after a sweep. Still images use Jimp;
+   GIF previews preserve the loop with fewer, smaller frames through
+   omggif. The full-size token route keeps the original quality. */
 let Jimp = null;
 try { ({ Jimp } = require('jimp')); }
 catch (_) { console.warn('[art] jimp unavailable — animated previews cannot be generated'); }
@@ -577,10 +575,10 @@ async function thumbOf(file, type) {
   let stat;
   try { stat = fs.statSync(file); } catch (_) { return null; }
   if (stat.size < 96 * 1024) return null; // already lighter than a thumb would be
-  const tf = `${file}.w${THUMB_W}`;
+  const tf = `${file}.w${THUMB_W}${type === 'image/gif' ? '-anim1' : ''}`;
   if (fs.existsSync(tf + '.json')) {
     const m = loadJson(tf + '.json', null);
-    if (m?.skip) return null;
+    if (m?.skip) return type === 'image/gif' ? { file, type } : null;
     if (m && fs.existsSync(tf)) return { file: tf, type: m.type };
   }
   if (thumbBusy.has(file)) return thumbBusy.get(file);
@@ -590,7 +588,7 @@ async function thumbOf(file, type) {
       thumbsCutting++;
       const rendered = await new Promise((resolve, reject) => {
         const worker = new Worker(path.join(__dirname, 'lib', 'thumbnail-worker.js'), { resourceLimits: { maxOldGenerationSizeMb: 128 } });
-        const timer = setTimeout(() => { worker.terminate(); reject(new Error('thumbnail timeout')); }, 15000);
+        const timer = setTimeout(() => { worker.terminate(); reject(new Error('thumbnail timeout')); }, type === 'image/gif' ? 45000 : 15000);
         const finish = () => { clearTimeout(timer); worker.terminate(); };
         worker.once('message', msg => { finish(); msg.error ? reject(new Error(msg.error)) : resolve(msg); });
         worker.once('error', e => { finish(); reject(e); });
@@ -600,7 +598,7 @@ async function thumbOf(file, type) {
       const out = Buffer.from(rendered.bytes), outType = rendered.type;
       if (out.length >= stat.size) {
         saveJson(tf + '.json', { skip: true, at: Date.now() });
-        return null;
+        return type === 'image/gif' ? { file, type } : null;
       }
       fs.writeFileSync(tf, out);
       saveJson(tf + '.json', { type: outType, at: Date.now() });
@@ -630,7 +628,7 @@ async function serveArt(req, res, src, cacheSeconds, wantThumb) {
   if (!src) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
   /* The etag IS the source url's hash (plus the variant): same source,
      same art. A cover an admin re-points gets a new etag by construction. */
-  const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W + '-v2' : ''}"`;
+  const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W + '-v3' : ''}"`;
   if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
   let deadline;
   const got = await Promise.race([
@@ -677,7 +675,7 @@ async function serveCoverArt(req, res, addr, wantThumb) {
 function pinArt(src, buf, type) {
   const key = imgKey(src);
   const file = path.join(IMG_DIR, key);
-  for (const suffix of [`.w${THUMB_W}`, `.w${THUMB_W}.json`]) { try { fs.unlinkSync(file + suffix); } catch (_) {} }
+  for (const suffix of [`.w${THUMB_W}`, `.w${THUMB_W}.json`, `.w${THUMB_W}-anim1`, `.w${THUMB_W}-anim1.json`]) { try { fs.unlinkSync(file + suffix); } catch (_) {} }
   fs.writeFileSync(file, buf);
   saveJson(file + '.json', { type, src, size: buf.length, at: Date.now(), pinned: true });
   imgDead.delete(key);
@@ -697,7 +695,7 @@ function sweepImgCache() {
       try { if (Date.now() - fs.statSync(file).mtimeMs > 3600000) fs.unlinkSync(file); } catch (_) {}
     }
     const entries = files
-      .filter((f) => /^[a-f0-9]{64}(?:\.w480)?$/.test(f)) // never sweep an in-flight .part
+      .filter((f) => /^[a-f0-9]{64}(?:\.w480(?:-anim1)?)?$/.test(f)) // never sweep an in-flight .part
       .map((f) => { const s = fs.statSync(path.join(IMG_DIR, f)); return { f, size: s.size, at: s.mtimeMs }; });
     let total = entries.reduce((a, e) => a + e.size, 0);
     if (total <= IMG_DIR_MAX) return;

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "jimp": "^1.6.1",
-    "koilib": "^9.1.0"
+    "koilib": "^9.1.0",
+    "omggif": "1.0.10"
   }
 }
