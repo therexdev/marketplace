@@ -43,6 +43,7 @@ const path = require('path');
 const zlib = require('zlib');
 const { Worker } = require('worker_threads');
 const { dataImage, ipfsRoots, normalizeImage: rewriteImg, metadataImage, firstAvailable, limitedBody } = require('./lib/media');
+const { downloadImage } = require('./lib/artwork-download');
 const { Signer, Provider, Contract, Transaction, Serializer, utils } = require('koilib');
 
 /* A background chain walk, a stray rejection, a bad response shape — none
@@ -486,7 +487,7 @@ const metaPathHints = new Map(); // collection -> filename convention that answe
 
 const IMG_DIR = path.join(CFG.DATA_DIR, 'imgcache');
 fs.mkdirSync(IMG_DIR, { recursive: true });
-const IMG_FILE_MAX = 12 * 1048576;   // one artwork; beyond this it stays a placeholder
+const IMG_FILE_MAX = 12 * 1048576;   // operator uploads; remote originals stream up to 128 MiB
 const IMG_DIR_MAX = 2048 * 1048576;  // the whole cache; swept oldest-first past this
 
 const IMG_MAGIC = [
@@ -515,7 +516,7 @@ const coverUrl = (row) =>
   !row ? '' : localUpload(row.image) || `/img/c/${row.address}`;
 
 const imgKey = (src) => crypto.createHash('sha256').update(src).digest('hex');
-const imgDead = new Map();     // key -> when the last hunt failed (retried after two minutes)
+const imgDead = new Map();     // key -> when the last hunt failed (retried after 15 seconds)
 const imgBusy = new Map();     // key -> in-flight fetch, so a grid asks once
 let imgFetching = 0;           // upstream fetches in flight, across all keys
 
@@ -528,7 +529,7 @@ async function fetchArt(src) {
     if (meta && fs.existsSync(file)) return { file, type: meta.type };
   }
   const failedAt = imgDead.get(key);
-  if (failedAt && Date.now() - failedAt < 120000) return null;
+  if (failedAt && Date.now() - failedAt < 15000) return null;
   if (imgBusy.has(key)) return imgBusy.get(key);
   const embedded = dataImage(src);
   if (embedded) {
@@ -542,17 +543,9 @@ async function fetchArt(src) {
     imgFetching++;
     try {
       const tries = [...new Set([src, ...(ipfsRoots(src) || [])])];
-      const got = await firstAvailable(tries, async (url, signal) => {
-        const r = await fetch(url, { signal });
-        const buf = await limitedBody(r, IMG_FILE_MAX);
-        const claimed = r.headers.get('content-type') || '';
-        const sniffed = IMG_MAGIC.find(([m]) => buf.subarray(0, m.length).equals(m));
-        if (!buf.length || (!/^image\//.test(claimed) && !sniffed)) throw new Error('not an image');
-        return { buf, type: sniffed ? sniffed[1] : claimed.split(';')[0] };
-      }, 10000);
+      const got = await downloadImage(tries, file, { fetch });
       if (got) {
-        fs.writeFileSync(file, got.buf);
-        saveJson(file + '.json', { type: got.type, src, size: got.buf.length, at: Date.now() });
+        saveJson(file + '.json', { type: got.type, src, size: got.size, at: Date.now() });
         imgDead.delete(key);
         return { file, type: got.type };
       }
@@ -570,17 +563,17 @@ async function fetchArt(src) {
    look identical at 300px. Derivatives are cut once with jimp (pure
    JS, vendored like everything else — a deploy cannot lose it), kept
    beside the original in the cache, and regenerating after a sweep is
-   automatic. If jimp ever fails to load, originals serve as before —
-   slower, never broken. */
+   automatic. GIF previews decode only the first frame; the unchanged
+   animation is reserved for the full-size token route. */
 let Jimp = null;
 try { ({ Jimp } = require('jimp')); }
-catch (_) { console.warn('[art] jimp unavailable — grids will serve full-size originals'); }
+catch (_) { console.warn('[art] jimp unavailable — animated previews cannot be generated'); }
 
 const THUMB_W = 480;
 const thumbBusy = new Map();
 let thumbsCutting = 0;
 async function thumbOf(file, type) {
-  if (!Jimp || ['image/svg+xml', 'image/gif', 'image/webp'].includes(type)) return null;
+  if (!Jimp || ['image/svg+xml', 'image/webp'].includes(type)) return null;
   let stat;
   try { stat = fs.statSync(file); } catch (_) { return null; }
   if (stat.size < 96 * 1024) return null; // already lighter than a thumb would be
@@ -596,13 +589,13 @@ async function thumbOf(file, type) {
       while (thumbsCutting >= 2) await new Promise((r) => setTimeout(r, 100));
       thumbsCutting++;
       const rendered = await new Promise((resolve, reject) => {
-        const worker = new Worker(path.join(__dirname, 'lib', 'thumbnail-worker.js'));
+        const worker = new Worker(path.join(__dirname, 'lib', 'thumbnail-worker.js'), { resourceLimits: { maxOldGenerationSizeMb: 128 } });
         const timer = setTimeout(() => { worker.terminate(); reject(new Error('thumbnail timeout')); }, 15000);
         const finish = () => { clearTimeout(timer); worker.terminate(); };
         worker.once('message', msg => { finish(); msg.error ? reject(new Error(msg.error)) : resolve(msg); });
         worker.once('error', e => { finish(); reject(e); });
         worker.once('exit', code => { clearTimeout(timer); if (code !== 0) reject(new Error('thumbnail worker exited')); });
-        worker.postMessage({ file, width: THUMB_W });
+        worker.postMessage({ file, width: THUMB_W, type });
       });
       const out = Buffer.from(rendered.bytes), outType = rendered.type;
       if (out.length >= stat.size) {
@@ -619,29 +612,43 @@ async function thumbOf(file, type) {
   return run;
 }
 
+async function artVariant(original, wantThumb) {
+  if (!wantThumb) return original;
+  const preview = await thumbOf(original.file, original.type).catch(() => null);
+  if (preview) return preview;
+  // Never turn a failed grid preview into a multi-megabyte GIF download.
+  if (original.type === 'image/gif' && fs.statSync(original.file).size >= 96 * 1024) return null;
+  return original;
+}
+
+function artPending(res) {
+  res.writeHead(503, { 'Cache-Control': 'no-store', 'Retry-After': '15' });
+  return res.end();
+}
+
 async function serveArt(req, res, src, cacheSeconds, wantThumb) {
   if (!src) { res.writeHead(404, { 'Cache-Control': 'no-store' }); return res.end(); }
   /* The etag IS the source url's hash (plus the variant): same source,
      same art. A cover an admin re-points gets a new etag by construction. */
-  const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W : ''}"`;
+  const tag = `"${imgKey(src)}${wantThumb ? '-w' + THUMB_W + '-v2' : ''}"`;
   if (req.headers['if-none-match'] === tag) { res.writeHead(304, { 'ETag': tag }); return res.end(); }
   let deadline;
   const got = await Promise.race([
     fetchArt(src).catch(() => null),
     new Promise(resolve => { deadline = setTimeout(() => resolve(null), 12000); }),
   ]).finally(() => clearTimeout(deadline));
-  if (!got) {
-    res.writeHead(503, { 'Cache-Control': 'no-store', 'Retry-After': '15' });
-    return res.end();
-  }
-  const variant = (wantThumb && await thumbOf(got.file, got.type).catch(() => null)) || got;
+  if (!got) return artPending(res);
+  const variant = await artVariant(got, wantThumb);
+  if (!variant) return artPending(res);
   res.writeHead(200, {
     'Content-Type': variant.type || 'application/octet-stream',
+    'Content-Length': fs.statSync(variant.file).size,
     'Cache-Control': `public, max-age=${cacheSeconds}`,
     'ETag': tag,
     'X-Content-Type-Options': 'nosniff',
     'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
   });
+  if (req.method === 'HEAD') return res.end();
   fs.createReadStream(variant.file).pipe(res);
 }
 
@@ -682,8 +689,15 @@ function pinArt(src, buf, type) {
    and anything still wanted comes back on its next view. */
 function sweepImgCache() {
   try {
-    const entries = fs.readdirSync(IMG_DIR)
-      .filter((f) => !f.endsWith('.json'))
+    const files = fs.readdirSync(IMG_DIR);
+    // Downloads are bounded to 45 seconds. Remove remnants of a killed
+    // process after an hour without touching another worker's active file.
+    for (const name of files.filter(f => /^[a-f0-9]{64}\.[a-f0-9]{16}\.part$/.test(f))) {
+      const file = path.join(IMG_DIR, name);
+      try { if (Date.now() - fs.statSync(file).mtimeMs > 3600000) fs.unlinkSync(file); } catch (_) {}
+    }
+    const entries = files
+      .filter((f) => /^[a-f0-9]{64}(?:\.w480)?$/.test(f)) // never sweep an in-flight .part
       .map((f) => { const s = fs.statSync(path.join(IMG_DIR, f)); return { f, size: s.size, at: s.mtimeMs }; });
     let total = entries.reduce((a, e) => a + e.size, 0);
     if (total <= IMG_DIR_MAX) return;
@@ -1753,9 +1767,11 @@ async function serveUpload(res, name, wantThumb) {
   if (!file.startsWith(UPLOAD_DIR) || !fs.existsSync(file)) { res.writeHead(404); return res.end('not found'); }
   const ext = path.extname(file);
   const full = { file, type: MIME[ext] || 'application/octet-stream' };
-  const variant = (wantThumb && await thumbOf(file, full.type).catch(() => null)) || full;
+  const variant = await artVariant(full, wantThumb);
+  if (!variant) return artPending(res);
   res.writeHead(200, {
     'Content-Type': variant.type,
+    'Content-Length': fs.statSync(variant.file).size,
     'Cache-Control': 'public, max-age=31536000, immutable',
     'Access-Control-Allow-Origin': '*',
     'X-Content-Type-Options': 'nosniff',

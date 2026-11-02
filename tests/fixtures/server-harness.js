@@ -46,7 +46,7 @@ async function harness(options = {}) {
     setTimeout, clearTimeout, setInterval: () => ({ unref() {} }), clearInterval,
   };
   const source = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
-  vm.runInNewContext(source.slice(0, source.indexOf('server.listen(CFG.PORT')) + '\nmodule.exports = { server, tokenMeta, fetchArt, thumbOf, pinArt, cached, caches, rebuildIndex, indexPeek, imgBusy };', sandbox, { filename: path.join(ROOT, 'server.js') });
+  vm.runInNewContext(source.slice(0, source.indexOf('server.listen(CFG.PORT')) + '\nmodule.exports = { server, tokenMeta, fetchArt, thumbOf, pinArt, cached, caches, rebuildIndex, indexPeek, imgBusy, sweepImgCache };', sandbox, { filename: path.join(ROOT, 'server.js') });
   const app = sandbox.module.exports;
   await new Promise(resolve => app.server.listen(options.port || 0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${app.server.address().port}`;

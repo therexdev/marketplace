@@ -213,11 +213,18 @@ Artwork uses same-origin `/img/c/:address` and `/img/t/:address/:tokenId` routes
 * Resolved metadata survives restarts in `DATA_DIR/metadata`. Existing audited
   per-token references recover sampled legacy NFTs (including six Crew NFTs)
   while a live metadata refresh runs; unsampled tokens are never guessed.
-* Original art is cached on disk. PNG/JPEG thumbnails are generated in worker
-  threads so CPU-heavy image work does not stop the HTTP server. GIF/WebP files
-  retain their originals so animation is preserved. SVG remains vector artwork.
-* Missing artwork shows a readable placeholder, retries once, and keeps the NFT
-  clickable. Requests no longer redirect visitors back to a failing gateway.
+* Remote originals up to 128 MiB stream to temporary disk files, with a 45-second
+  upstream timeout and at most two artwork downloads running at once. Only a
+  complete winning gateway response enters the cache; failed and losing downloads
+  are removed. Upload and embedded-data limits are unchanged.
+* PNG/JPEG and GIF previews are generated in worker threads so image work does
+  not stop the HTTP server. GIF grids use a small still of the first frame; opening
+  an NFT loads the unchanged animated original. A failed GIF preview never sends
+  the large animation to every grid card. GIF decoding is bounded to 16 megapixels.
+  WebP retains its original and SVG remains vector artwork.
+* Artwork that is still downloading shows a loading placeholder and retries with
+  bounded backoff over several minutes. Exhausted retries show “Artwork unavailable”
+  and keep the NFT clickable. Failed upstream fetches can retry after 15 seconds.
 
 The first deployment rebuilds old indexes with the new image support. Full filter
 counts still require index completion; indexes remain capped by `INDEX_MAX_TOKENS`.

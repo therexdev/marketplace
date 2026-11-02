@@ -9,7 +9,7 @@ const view = $('#view');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 /* Grid tiles ask the art cache for a 480px derivative — a tile never
    needs the multi-MB original. Full art stays for the token page. */
-const thumb = (u) => u && (u.startsWith('/img/') || u.startsWith('/u/')) ? u + (u.includes('?') ? '&' : '?') + 'w=480' : u;
+const thumb = (u) => u && (u.startsWith('/img/') || u.startsWith('/u/')) ? u + (u.includes('?') ? '&' : '?') + 'w=480&v=2' : u;
 
 const KOIN = (sats) => {
   const n = Number(BigInt(sats || '0')) / 1e8;
@@ -1345,24 +1345,37 @@ function paintHeader() {
   $('#btn-me').classList.toggle('hidden', !a);
 }
 
+// Cold collections may still be downloading originals after the HTTP deadline.
+// Retry over several minutes, then stop; a detached card never restarts a fetch.
+const ART_RETRY_DELAYS = [3000, 6000, 12000, 24000, 30000, 30000];
 document.addEventListener('error', (e) => {
   const img = e.target;
   if (!(img instanceof HTMLImageElement) || !img.closest('#view')) return;
-  if (!img.dataset.retried) {
-    img.dataset.retried = '1';
-    setTimeout(() => { if (img.isConnected) { const src = new URL(img.src); src.searchParams.set('retry', Date.now()); img.src = src.href; } }, 15000);
+  const attempt = Number(img.dataset.artAttempts || 0);
+  clearTimeout(img.artRetryTimer);
+  if (attempt < ART_RETRY_DELAYS.length) {
+    img.dataset.artAttempts = String(attempt + 1);
+    img.artRetryTimer = setTimeout(() => {
+      if (!img.isConnected) return;
+      const src = new URL(img.src);
+      src.searchParams.set('retry', Date.now());
+      img.src = src.href;
+    }, ART_RETRY_DELAYS[attempt]);
   }
   img.hidden = true;
-  if (!img.parentElement.querySelector('.art-unavailable')) {
-    const placeholder = document.createElement('div');
+  let placeholder = img.parentElement.querySelector('.art-unavailable');
+  if (!placeholder) {
+    placeholder = document.createElement('div');
     placeholder.className = 'ph art-unavailable';
-    placeholder.textContent = 'Artwork unavailable';
     img.parentElement.append(placeholder);
   }
+  placeholder.textContent = attempt < ART_RETRY_DELAYS.length ? 'Loading artwork…' : 'Artwork unavailable';
 }, true);
 document.addEventListener('load', e => {
   const img = e.target;
   if (!(img instanceof HTMLImageElement)) return;
+  clearTimeout(img.artRetryTimer);
+  delete img.dataset.artAttempts;
   img.hidden = false;
   img.parentElement?.querySelector('.art-unavailable')?.remove();
 }, true);

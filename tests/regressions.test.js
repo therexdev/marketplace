@@ -337,7 +337,6 @@ test('thumbnails preserve alpha, remain bounded, and keep HTTP responsive during
     const resized = await Jimp.read(result.file);
     assert.ok(resized.width <= 480 && resized.height <= 480);
     assert.ok(resized.bitmap.data.some((b, i) => i % 4 === 3 && b < 255));
-    assert.equal(await app.thumbOf(file, 'image/gif'), null);
     assert.equal(await app.thumbOf(file, 'image/webp'), null);
   } finally { await app.close(); }
 });
